@@ -1,0 +1,23 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.amazonaws.emr</groupId>
+    <artifactId>amazon-emr-user-role-mapper</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+    <name>Amazon EMR User Role Mapper</name>
+
+    <modules>
+        <module>emr-user-role-mapper-interface</module>
+        <module>emr-user-role-mapper-application</module>
+    </modules>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+</project>

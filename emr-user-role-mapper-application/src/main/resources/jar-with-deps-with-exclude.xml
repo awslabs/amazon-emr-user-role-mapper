@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
+    <id>jar-with-dependencies-and-exclude-classes</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>false</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+            <excludes>
+                <exclude>org.bytedeco:systems:jar:macosx-x86_64:${javacpp.version}</exclude>
+                <exclude>org.bytedeco:systems:jar:windows-x86:${javacpp.version}</exclude>
+                <exclude>org.bytedeco:systems:jar:windows-x86_64:${javacpp.version}</exclude>
+                <exclude>org.bytedeco:systems:jar:linux-ppc64le:${javacpp.version}</exclude>
+                <exclude>org.bytedeco:systems:jar:linux-arm64:${javacpp.version}</exclude>
+                <exclude>org.bytedeco:systems:jar:linux-armhf:${javacpp.version}</exclude>
+            </excludes>
+        </dependencySet>
+    </dependencySets>
+    <fileSets>
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <directory>${project.build.outputDirectory}</directory>
+        </fileSet>
+    </fileSets>
+</assembly>

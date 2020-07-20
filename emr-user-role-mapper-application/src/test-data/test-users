@@ -1,0 +1,4 @@
+u1:x:503:504::/home/u1:/bin/bash
+u2:x:504:505::/home/u2:/bin/bash
+u3:x:505:506::/home/u3:/bin/bash
+u4:x:506:507::/home/u4:/bin/bash

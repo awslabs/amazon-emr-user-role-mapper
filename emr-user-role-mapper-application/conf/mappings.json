@@ -1,0 +1,13 @@
+{
+  "PrincipalRoleMappings": [
+    {
+      "username": "user1",
+      "rolearn": "arn:aws:iam::<ACC_ID>:role/<ROLE_NAME>"
+    },
+    {
+      "groupname": "group1",
+      "rolearn": "arn:aws:iam::<ACC_ID>:role/<ROLE_NAME>",
+      "duration": 1800
+    }
+  ]
+}
