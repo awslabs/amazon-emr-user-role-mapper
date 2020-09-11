@@ -17,9 +17,31 @@ cd emr-user-role-mapper-application/usr
 cp ../target/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar install/
 ```
 
-Edit the properties file in install/user-role-mapper.properties. Please check appendix for the format of the JSON file.
-  `rolemapper.s3.key=mappings.json`
-  `rolemapper.s3.bucket=my-urm-bucket`
+Edit the properties file in install/user-role-mapper.properties. 
+ 
+```
+rolemapper.s3.key=mappings.json`
+rolemapper.s3.bucket=my-urm-bucket`
+```
+
+Here is a sample format of the JSON.
+
+```
+{
+  "PrincipalRoleMappings": [
+    {
+      "username": "user1",
+      "rolearn": "arn:aws:iam::123456789012:role/test-role1"
+    },
+   
+    {
+      "groupname": "group1",
+      "rolearn": "arn:aws:iam::123456789012:role/test-role2",
+      "duration": 1800
+    }
+  ]
+}
+```
 
 Set shell variables for S3 Bucket and folder within that bucket where the install artifacts would be copied. Like -
 ```
