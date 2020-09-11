@@ -1,4 +1,27 @@
-#!/bin/bash -l
+# Amazon EMR
+# 
+# Copyright 2020, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# 
+# Licensed under the Amazon Software License (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+# 
+#   http://aws.amazon.com/asl/
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
+
+
+if [[ $# -lt 2 ]]; then
+  echo "Two parameters are required to call this script. Usage: "
+  echo "$0 <S3 Bucket of URM Artifacts> <S3 Path of URM Artifacts> "
+  exit -1
+fi
+
+BUCKET=$1
+S3_PATH=$2
 
 USER_ROLE_MAPPER_PORT=9944
 
@@ -33,7 +56,8 @@ function remove_matching_rules() {
 # Chain OUTPUT (policy ACCEPT)
 # target     prot opt source               destination
 # ACCEPT     tcp  --  anywhere             server-13-249-37-5.iad89.r.cloudfront.net(aws.amazon.com)  tcp dpt:http owner UID match knox
-# ACCEPT     tcp  --  anywhere             instance-data.ec2.internal  tcp dpt:http owner UID match hadoop
+# ACCEPT     tcp  --  anywhere             instance-data.ec2.internal  tcp dpt:http owner UID match knox
+# ACCEPT     tcp  --  anywhere             instance-data.ec2.internal  tcp dpt:http owner UID match emrsecretagent
 #
 # input: knox, output: 2
 # input: secret, output: 3
@@ -133,55 +157,42 @@ function setup_iptable_rules() {
     # grant root user the access to EC2 metadata
     insert_iptable_rule_to_whitelist_privileged_user root
 
+    # whitelist hadoop user as IC is run by hadoop, IC constructor needs to call EC2 metadata
     insert_iptable_rule_to_whitelist_privileged_user hadoop
 
-    # whitelist userrolemapper as role mapper is the proxy to EC2 metadata service
+    # whitelist emrsecretagent as secret agent is the proxy to EC2 metadata service
     insert_iptable_rule_to_whitelist_privileged_user userrolemapper
 }
 
 
-function start() {
 
-    set -x
-
-    PID_FILE=/emr/userrolemapper/run/userrolemapper.pid
-    EMRUSERROLEMAPPER_HOME=/usr/share/aws/emr/user-role-mapper
-    CLASSPATH="${EMRUSERROLEMAPPER_HOME}/lib/*:${EMRUSERROLEMAPPER_HOME}/conf/"
-    CONF="${EMRUSERROLEMAPPER_HOME}/conf/rolemapper.properties"
-
-    # Create cgroup with fixed resources for running EMR Secret Agent
-    sudo service cgconfig start
-    sudo cgcreate -g memory,cpu:userrolemapper-group
-    sudo cgset -r memory.limit_in_bytes=1024M userrolemapper-group
-    sudo cgset -r memory.memsw.limit_in_bytes=768M userrolemapper-group
-    sudo cgset -r cpu.rt_runtime_us=2000000 userrolemapper-group
-    sudo cgset -r cpu.rt_period_us=5000000 userrolemapper-group
-
-    # Launch java process under emrsecretagent user
-    LAUNCH_CMD='/usr/bin/java -Xmx512m -Xms300m -XX:OnOutOfMemoryError="kill -9 %p" \
-        -XX:MinHeapFreeRatio=10 -cp '$CLASSPATH' -Dlog4j.configuration=file:'${EMRUSERROLEMAPPER_HOME}/conf'/log4j.properties com.amazon.emr.UserRoleMappingServer &'
-
-    sudo -u userrolemapper -H sh -c "$LAUNCH_CMD"
-
-    # Test to see PID=$! works. Keeping it here for logging purpose.
-    PID=$!
-    echo 'Result from PID=$!: '$PID
-
-    # Get the PID and assign cgroup to the newly launched java process. Command below excludes the process that runs grep itself.
-    # PID=$! doesn't work so manually grep PID from ps.
-    userrolemapper_pid=$(ps -eo uname:20,pid,cmd | grep "RoleMappingServer.*[/]usr/bin/java.*emr.RoleMappingServer" | awk '{print $2}')
-    echo "Mapper process id is $userrolemapper_pid"
-
-    sudo cgclassify -g cpu,memory:userrolemapper-group $userrolemapper_pid
-
-    echo $userrolemapper_pid > $PID_FILE
-    sleep 5
-
-    setup_iptable_rules
-}
+echo "Creating user and dirs"
+sudo useradd userrolemapper
+sudo mkdir -p /var/run/emr-user-role-mapper/
+sudo mkdir -p /usr/share/aws/emr/user-role-mapper/lib
+sudo mkdir -p /usr/share/aws/emr/user-role-mapper/conf
+sudo mkdir -p /emr/user-role-mapper/log/
+sudo chown -R userrolemapper:hadoop /emr/user-role-mapper
 
 
-if [ $# -eq 0 ]; then
-    start
-else
- sudo   kill -9 $1
+echo "Getting artifacts from S3"
+
+echo "Getting log4j.properties from S3"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/log4j.properties /usr/share/aws/emr/user-role-mapper/conf
+echo "Getting user-role-mapper.properties from S3"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/user-role-mapper.properties /usr/share/aws/emr/user-role-mapper/conf
+echo "Getting and setting mappings.json"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/mappings.json /usr/share/aws/emr/user-role-mapper/conf
+sudo sed -i "s#\$AWS_ROLE#${ROLE_ARN}#g" /usr/share/aws/emr/user-role-mapper/conf/mappings.json
+echo "Getting emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar /usr/share/aws/emr/user-role-mapper/lib/
+echo "Getting emr-user-role-mapper.conf from S3"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper.conf /etc/init/
+echo "Reload config"
+sudo initctl reload-configuration
+echo "Start the service"
+sudo initctl start emr-user-role-mapper
+sudo status emr-user-role-mapper
+
+setup_iptable_rules
+echo "Done!"
