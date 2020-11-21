@@ -6,5 +6,9 @@ package com.amazon.aws.emr.common.system.user;
 import java.util.OptionalInt;
 
 public interface UserIdService {
-    OptionalInt resolveSystemUID(String localAddr, int localPort, String remoteAddr, int remotePort);
+    OptionalInt resolveSystemUID(String localAddr, int localPort,
+                                 String remoteAddr, int remotePort);
+    OptionalInt resolveSystemUID(String localAddr, int localPort,
+                                 String remoteAddr, int remotePort,
+                                 boolean isNativeIMDSApi);
 }

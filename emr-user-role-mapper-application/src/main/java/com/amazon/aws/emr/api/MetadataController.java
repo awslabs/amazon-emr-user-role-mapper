@@ -3,6 +3,7 @@
 
 package com.amazon.aws.emr.api;
 
+import com.amazon.aws.emr.ApplicationConfiguration;
 import com.amazon.aws.emr.common.system.PrincipalResolver;
 import com.amazon.aws.emr.credentials.MetadataCredentialsProvider;
 import com.amazon.aws.emr.mapping.MappingInvoker;
@@ -36,6 +37,7 @@ import java.util.OptionalInt;
 public class MetadataController {
 
     public static final String LATEST_IAM_CREDENTIALS_ROOT_PATH = "/latest/meta-data/iam/security-credentials/";
+    public static final String LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION = LATEST_IAM_CREDENTIALS_ROOT_PATH + "impersonation/";
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
@@ -54,6 +56,9 @@ public class MetadataController {
     @Inject
     private UserIdService userIdService;
 
+    @Inject
+    ApplicationConfiguration applicationConfiguration;
+
     /**
      * Gets credentials for a role name.
      * Empty credentials are returned if the calling user has no mapping defined, or is unauthorized to assume the role.
@@ -70,6 +75,29 @@ public class MetadataController {
         Optional<AssumeRoleRequest> assumeRoleRequest = makeUserAssumeRoleRequest(httpServletRequest);
         return assumeRoleRequest
                 .filter(request -> roleName.equals(getRoleNameFromArn(request.getRoleArn())))
+                .map(request -> metadataCredentialsProvider.getUserCredentials(request))
+                .map(credentials -> {
+                    log.debug("Done with request {}", assumeRoleRequest);
+                    return GSON.toJson(credentials.get());
+                })
+                .orElse(null);
+    }
+
+    /**
+     * Get credentials for an impersonated user, if allowed
+     * Empty credentials are returned if the calling user has no mapping defined, or is unauthorized to assume the role.
+     *
+     * @param httpServletRequest the HTTP Request object
+     * @param username           the name of impersonated user
+     * @return credentials obtained by serializing {@link EC2MetadataUtils.IAMSecurityCredential}
+     */
+    @GET
+    @Path("{apiVersion}/meta-data/iam/security-credentials/impersonation/{username}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String getCredentialsForUser(@Context HttpServletRequest httpServletRequest, @PathParam("username") String username) {
+        log.debug("Processing a impersonation request to get credentials for {}", username);
+        Optional<AssumeRoleRequest> assumeRoleRequest = makeUserAssumeRoleRequest(httpServletRequest, username);
+        return assumeRoleRequest
                 .map(request -> metadataCredentialsProvider.getUserCredentials(request))
                 .map(credentials -> {
                     log.debug("Done with request {}", assumeRoleRequest);
@@ -125,6 +153,15 @@ public class MetadataController {
         return username.flatMap(user -> mappingInvoker.map(user));
     }
 
+    private Optional<AssumeRoleRequest> makeUserAssumeRoleRequest(HttpServletRequest httpServletRequest, String username) {
+        Optional<String> impersonatedUser = Optional.empty();
+        if (isImpersonationAuthorized(httpServletRequest, username)) {
+            impersonatedUser = Optional.of(username);
+        }
+
+        return impersonatedUser.flatMap(user -> mappingInvoker.map(user));
+    }
+
     private Optional<String> identifyCaller(HttpServletRequest httpServletRequest) {
         OptionalInt uid = userIdService.resolveSystemUID(
                 httpServletRequest.getLocalAddr(),
@@ -143,5 +180,35 @@ public class MetadataController {
                 httpServletRequest.getRemoteAddr(),
                 httpServletRequest.getRemotePort());
         return Optional.empty();
+    }
+
+    private boolean isImpersonationAuthorized(HttpServletRequest httpServletRequest,
+                                              String impersonatedUser) {
+        OptionalInt uid = userIdService.resolveSystemUID(
+                httpServletRequest.getLocalAddr(),
+                httpServletRequest.getLocalPort(),
+                httpServletRequest.getRemoteAddr(),
+                httpServletRequest.getRemotePort(), false);
+
+        if (uid.isPresent()) {
+            Optional<String> username = principalResolver.getUsername(uid.getAsInt());
+            if (!username.isPresent()) {
+                log.warn("Unrecognized user trying to impersonate {}", impersonatedUser);
+                return false;
+            }
+
+            if (!applicationConfiguration
+                    .getAllowedUsersForImpersonation().contains(username.get())) {
+                log.warn("Unauthorized user {} trying to impersonate {}",
+                        username.get(), impersonatedUser);
+                return false;
+            }
+
+            log.debug("Authorized {} to impersonate {}", username.get(), impersonatedUser);
+            return true;
+        } else {
+            log.warn("Failed to identify the caller of impersonation request");
+            return false;
+        }
     }
 }

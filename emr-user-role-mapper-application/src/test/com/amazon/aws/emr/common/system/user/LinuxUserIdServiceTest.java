@@ -44,7 +44,7 @@ public class LinuxUserIdServiceTest {
     }
 
     @Test
-    public void resolveUID_tcp() {
+    public void resolveUID_tcp_IMDS() {
         OptionalInt uid = userIdService.resolveSystemUID(
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
@@ -66,7 +66,7 @@ public class LinuxUserIdServiceTest {
     }
 
     @Test
-    public void resolveUID_tcp6() throws NoSuchFieldException, IllegalAccessException {
+    public void resolveUID_tcp6_IMDS() throws NoSuchFieldException, IllegalAccessException {
         OptionalInt uid = userIdService.resolveSystemUID(
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
@@ -76,13 +76,50 @@ public class LinuxUserIdServiceTest {
     }
 
     @Test
-    public void resolveUID_unmatched() throws NoSuchFieldException, IllegalAccessException {
+    public void resolveUID_unmatched_IMDS() throws NoSuchFieldException, IllegalAccessException {
         int nonExistingPort = 999999;
         OptionalInt uid = userIdService.resolveSystemUID(
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "127.0.0.1",
                 nonExistingPort);
+        assertThat(uid.isPresent(), is(false));
+    }
+
+    @Test
+    public void resolveUID_tcp_nonIMDS() {
+        OptionalInt uid = userIdService.resolveSystemUID(
+                "127.0.0.1",
+                LOCAL_SERVER_PORT,
+                "127.0.0.1",
+                42088, false);
+        assertThat(uid.getAsInt(), is(510));
+    }
+
+    @Test
+    public void resolveUID_tcp6_nonIMDS() {
+        OptionalInt uid = userIdService.resolveSystemUID(
+                "127.0.0.1",
+                LOCAL_SERVER_PORT,
+                "127.0.0.1",
+                42089, false);
+        assertThat(uid.getAsInt(), is(470));
+        uid = userIdService.resolveSystemUID(
+                "127.0.0.1",
+                LOCAL_SERVER_PORT,
+                "127.0.0.1",
+                42090, false);
+        assertThat(uid.getAsInt(), is(470));
+    }
+
+    @Test
+    public void resolveUID_unmatched_nonIMDS() throws NoSuchFieldException, IllegalAccessException {
+        int nonExistingPort = 999999;
+        OptionalInt uid = userIdService.resolveSystemUID(
+                "127.0.0.1",
+                LOCAL_SERVER_PORT,
+                "127.0.0.1",
+                nonExistingPort, false);
         assertThat(uid.isPresent(), is(false));
     }
 }
