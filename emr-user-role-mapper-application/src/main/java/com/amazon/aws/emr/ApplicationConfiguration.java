@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 public class ApplicationConfiguration {
 
     private final static String PROPS_FILE = "/user-role-mapper.properties";
-    private Properties properties = new Properties();
+    protected Properties properties = new Properties();
 
     @PostConstruct
     public void init() {

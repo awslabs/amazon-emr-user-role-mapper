@@ -53,7 +53,7 @@ public class MappingInvoker {
         try {
             String className = applicationConfiguration.getProperty(Constants.ROLE_MAPPER_CLASS,
                     Constants.ROLE_MAPPING_DEFAULT_CLASSNAME);
-            log.info("Trying to load {}", className);
+            log.info("Trying to load {} {}", className, applicationConfiguration.getAllPropertyNames());
             if (className.equals(Constants.ROLE_MAPPING_DEFAULT_CLASSNAME)) {
                 // For our default mapper implementation we need at least the S3 bucket name and key
                 Constructor c = Class.forName(className)
