@@ -8,6 +8,7 @@ import com.amazon.aws.emr.common.Constants;
 import com.amazon.aws.emr.common.system.PrincipalResolver;
 import com.amazon.aws.emr.rolemapper.UserRoleMapperProvider;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.hk2.api.Immediate;
@@ -54,26 +55,36 @@ public class MappingInvoker {
             String className = applicationConfiguration.getProperty(Constants.ROLE_MAPPER_CLASS,
                     Constants.ROLE_MAPPING_DEFAULT_CLASSNAME);
             log.info("Trying to load {}", className);
-            if (className.equals(Constants.ROLE_MAPPING_DEFAULT_CLASSNAME)) {
+            if (isS3BasedProviderImpl(className)) {
                 // For our default mapper implementation we need at least the S3 bucket name and key
                 Constructor c = Class.forName(className)
                                      .getConstructor(String.class, String.class, PrincipalResolver.class);
                 String bucketName = applicationConfiguration.getProperty(Constants.ROLE_MAPPING_S3_BUCKET, null);
                 String key = applicationConfiguration.getProperty(Constants.ROLE_MAPPING_S3_KEY, null);
                 roleMapperProvider = (UserRoleMapperProvider) c.newInstance(bucketName, key, principalResolver);
+                log.info("Successfully created the mapper using {}/{}", bucketName, key);
             } else {
                 Class clazz = Class.forName(className);
                 roleMapperProvider = (UserRoleMapperProvider) clazz.newInstance();
             }
-            roleMapperProvider.init();
+            roleMapperProvider.init(applicationConfiguration.asMap());
+            log.info("Initialized the mapper.");
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            log.error("Could not load the mapper", e);
             throw new RuntimeException("Could not load the mapper class", e);
         } catch (Throwable t) {
+            log.error("Could not load the mapper", t);
             throw new RuntimeException("Could not initialize the mapper", t);
         }
         int refreshIntervalMins = Integer.parseInt(applicationConfiguration.getProperty
                 (Constants.ROLE_MAPPPING_REFRESH_INTERVAL_MIN, Constants.ROLE_MAPPPING_DEFAULT_REFRESH_INTERVAL_MIN));
         createRefreshTask(Math.max(Constants.ROLE_MAPPING_MIN_REFRESH_INTERVAL_MIN, refreshIntervalMins));
+    }
+
+    @VisibleForTesting
+    public boolean isS3BasedProviderImpl(String className) {
+        return className.equals(Constants.ROLE_MAPPING_DEFAULT_CLASSNAME) ||
+            className.equals(Constants.ROLE_MAPPING_MANAGED_POLICY_CLASSNAME);
     }
 
     /**
