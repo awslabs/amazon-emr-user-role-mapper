@@ -5,6 +5,7 @@ package com.amazon.aws.emr.rolemapper;
 
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 
+import java.util.Map;
 import java.util.Optional;
 
 public interface UserRoleMapperProvider {
@@ -12,7 +13,7 @@ public interface UserRoleMapperProvider {
     /**
      * Used to initialize the mapper. This is invoked once at Application start.
      */
-    void init();
+    void init(Map<String, String> configMap);
 
     /**
      * Fetch the {@link AssumeRoleRequest} to assume for a given user.

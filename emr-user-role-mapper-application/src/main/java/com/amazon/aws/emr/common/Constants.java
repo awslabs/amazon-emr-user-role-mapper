@@ -5,6 +5,7 @@ package com.amazon.aws.emr.common;
 
 import com.amazon.aws.emr.mapping.DefaultUserRoleMapperImpl;
 
+import com.amazon.aws.emr.mapping.ManagedPolicyBasedUserRoleMapperImpl;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -26,6 +27,10 @@ final public class Constants {
      */
     public static final String ROLE_MAPPING_S3_BUCKET = "rolemapper.s3.bucket";
     /**
+     * AWS Role to be used for role mapping. This is used in {@link ManagedPolicyBasedUserRoleMapperImpl}
+     */
+    public static final String ROLE_MAPPING_ROLE_ARN = "rolemapper.role.arn";
+    /**
      * S3 Bucket for the role mapping file.
      */
     public static final String ROLE_MAPPING_MAX_THREADS = "rolemapper.max.threads";
@@ -37,6 +42,7 @@ final public class Constants {
      * Key for the role mapping file.
      */
     public static final String ROLE_MAPPING_S3_KEY = "rolemapper.s3.key";
+
     /**
      * Duration in mins to check for new mapping.
      */
@@ -50,6 +56,13 @@ final public class Constants {
      * Default S3 Mapper Impl for JSON format.
      */
     public static final String ROLE_MAPPING_DEFAULT_CLASSNAME = DefaultUserRoleMapperImpl.class.getName();
+
+    /**
+     * Default S3 Mapper Impl for JSON format.
+     */
+    public static final String ROLE_MAPPING_MANAGED_POLICY_CLASSNAME = ManagedPolicyBasedUserRoleMapperImpl
+        .class.getName();
+
     /**
      * Constants related with joda DateTime and JSON
      */

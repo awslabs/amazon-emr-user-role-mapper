@@ -27,7 +27,7 @@ public class TestUserRoleMapperImpl implements UserRoleMapperProvider {
     private PrincipalResolver principalResolver;
 
     @Override
-    public void init() {
+    public void init(Map<String, String> configMap) {
         AssumeRoleRequest assumeRoleRequestU1 = new AssumeRoleRequest()
                 .withRoleArn("arn:aws:iam::123456789:role/u1")
                 .withRoleSessionName("u1");
