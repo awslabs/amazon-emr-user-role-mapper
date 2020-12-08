@@ -5,6 +5,8 @@ package com.amazon.aws.emr;
 
 import com.amazon.aws.emr.common.Constants;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.hk2.api.Immediate;
 
@@ -97,5 +99,8 @@ public class ApplicationConfiguration {
 
     public Set<String> getAllowedUsersForImpersonation() {
         return this.IMPERSONATION_ALLOWED_USERS;
+    }
+    public Map<String, String> asMap() {
+        return Maps.fromProperties(properties);
     }
 }
