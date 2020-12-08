@@ -49,19 +49,19 @@ public class LinuxUserIdServiceTest {
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "172.30.6.181",
-                39844);
+                39844, true);
         assertThat(uid.getAsInt(), is(509));
         uid = userIdService.resolveSystemUID(
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "172.30.6.181",
-                39860);
+                39860, true);
         assertThat(uid.getAsInt(), is(504));
         uid = userIdService.resolveSystemUID(
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "172.30.6.181",
-                39842);
+                39842, true);
         assertThat(uid.getAsInt(), is(506));
     }
 
@@ -71,7 +71,7 @@ public class LinuxUserIdServiceTest {
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "172.30.6.181",
-                42086);
+                42086, true);
         assertThat(uid.getAsInt(), is(485));
     }
 
@@ -82,7 +82,7 @@ public class LinuxUserIdServiceTest {
                 "127.0.0.1",
                 LOCAL_SERVER_PORT,
                 "127.0.0.1",
-                nonExistingPort);
+                nonExistingPort, true);
         assertThat(uid.isPresent(), is(false));
     }
 

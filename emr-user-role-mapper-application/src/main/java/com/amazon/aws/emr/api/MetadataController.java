@@ -149,7 +149,7 @@ public class MetadataController {
     }
 
     private Optional<AssumeRoleRequest> makeUserAssumeRoleRequest(HttpServletRequest httpServletRequest) {
-        Optional<String> username = identifyCaller(httpServletRequest);
+        Optional<String> username = identifyCaller(httpServletRequest, true);
         return username.flatMap(user -> mappingInvoker.map(user));
     }
 
@@ -162,12 +162,14 @@ public class MetadataController {
         return impersonatedUser.flatMap(user -> mappingInvoker.map(user));
     }
 
-    private Optional<String> identifyCaller(HttpServletRequest httpServletRequest) {
+    private Optional<String> identifyCaller(HttpServletRequest httpServletRequest,
+                                            boolean isNativeIMDSApi) {
         OptionalInt uid = userIdService.resolveSystemUID(
                 httpServletRequest.getLocalAddr(),
                 httpServletRequest.getLocalPort(),
                 httpServletRequest.getRemoteAddr(),
-                httpServletRequest.getRemotePort());
+                httpServletRequest.getRemotePort(),
+                isNativeIMDSApi);
         if (uid.isPresent()) {
             Optional<String> username = principalResolver.getUsername(uid.getAsInt());
             log.debug("User making the call {}", username);
@@ -184,27 +186,16 @@ public class MetadataController {
 
     private boolean isImpersonationAuthorized(HttpServletRequest httpServletRequest,
                                               String impersonatedUser) {
-        OptionalInt uid = userIdService.resolveSystemUID(
-                httpServletRequest.getLocalAddr(),
-                httpServletRequest.getLocalPort(),
-                httpServletRequest.getRemoteAddr(),
-                httpServletRequest.getRemotePort(), false);
-
-        if (uid.isPresent()) {
-            Optional<String> username = principalResolver.getUsername(uid.getAsInt());
-            if (!username.isPresent()) {
-                log.warn("Unrecognized user trying to impersonate {}", impersonatedUser);
-                return false;
-            }
-
+        Optional<String> caller = identifyCaller(httpServletRequest, false);
+        if (caller.isPresent()) {
             if (!applicationConfiguration
-                    .getAllowedUsersForImpersonation().contains(username.get())) {
+                    .getAllowedUsersForImpersonation().contains(caller.get())) {
                 log.warn("Unauthorized user {} trying to impersonate {}",
-                        username.get(), impersonatedUser);
+                        caller.get(), impersonatedUser);
                 return false;
             }
 
-            log.debug("Authorized {} to impersonate {}", username.get(), impersonatedUser);
+            log.debug("Authorized {} to impersonate {}", caller.get(), impersonatedUser);
             return true;
         } else {
             log.warn("Failed to identify the caller of impersonation request");

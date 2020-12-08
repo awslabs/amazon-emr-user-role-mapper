@@ -61,12 +61,6 @@ public class LinuxUserIdService implements UserIdService {
         }
     }
 
-    public OptionalInt resolveSystemUID(String localAddr, int localPort,
-                                        String remoteAddr, int remotePort) {
-        return resolveSystemUID(localAddr, localPort,
-                remoteAddr, remotePort, true);
-    }
-
     /**
      * Resolve linux user id via linux /proc/net/tcp(6)
      *
@@ -123,16 +117,16 @@ public class LinuxUserIdService implements UserIdService {
 
     private OptionalInt getUID(String line, int reqLocalPort,
                                int reqRemotePort, String procRemoteAddress,
-                               boolean isInterceptedIMDSCalled) {
+                               boolean isNativeIMDSApi) {
         return getUID(
                 line,
                 procRemoteAddress,
-                reqLocalPort, reqRemotePort, isInterceptedIMDSCalled);
+                reqLocalPort, reqRemotePort, isNativeIMDSApi);
     }
 
     private OptionalInt getUID(String line, String remoteAddr,
                                int reqLocalPort, int reqRemotePort,
-                               boolean isInterceptedIMDSCalled) {
+                               boolean isNativeIMDSApi) {
         Matcher matcher = pattern.matcher(line);
         if (!matcher.matches()) {
             return OptionalInt.empty();
@@ -149,7 +143,7 @@ public class LinuxUserIdService implements UserIdService {
         long state = Long.parseLong(matcher.group(5), 16);
         int uid = Integer.parseInt(matcher.group(6));
 
-        if (isInterceptedIMDSCalled) {
+        if (isNativeIMDSApi) {
             if ((procRemoteAddress.equals(Constants.Network.IPV4_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER) ||
                     procRemoteAddress.equals(Constants.Network.IPV6_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER))
                     && procLocalPort == reqRemotePort
