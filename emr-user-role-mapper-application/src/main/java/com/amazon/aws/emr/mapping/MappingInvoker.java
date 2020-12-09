@@ -67,8 +67,10 @@ public class MappingInvoker {
             }
             roleMapperProvider.init();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            log.info("Could not load the mapper " + e.getMessage());
             throw new RuntimeException("Could not load the mapper class", e);
         } catch (Throwable t) {
+            log.info("Could not load the mapper " + t.getMessage());
             throw new RuntimeException("Could not initialize the mapper", t);
         }
         int refreshIntervalMins = Integer.parseInt(applicationConfiguration.getProperty

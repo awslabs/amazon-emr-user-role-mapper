@@ -1,4 +1,4 @@
-package com.amazon.aws.emr.utils;
+package com.amazon.aws.emr.integration.utils;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
@@ -6,12 +6,16 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ResourceUtils {
+public class S3Utils {
 
   final static AmazonS3 s3 = AmazonS3ClientBuilder.standard().withRegion(Regions.DEFAULT_REGION)
       .build();
@@ -38,19 +42,21 @@ public class ResourceUtils {
     return named_bucket;
   }
 
-  public static void uploadObject(String bucket, String key, String file) {
-    s3.putObject(bucket, key, new File(file));
+  public static void uploadObject(String bucket, String key, String fileContents) {
+    s3.putObject(bucket, key, fileContents);
   }
 
-  public static void listBucket(String bucket) {
-    ListObjectsV2Result result = s3.listObjectsV2(bucket);
-    List<S3ObjectSummary> objects = result.getObjectSummaries();
-    for (S3ObjectSummary os : objects) {
-      System.out.println("* " + os.getKey());
+  public static String getS3FileAsString(InputStream is) throws IOException {
+    if (is == null)
+      return null;
+    StringBuilder sb = new StringBuilder();
+    try (BufferedReader reader = new BufferedReader(
+        new InputStreamReader(is, StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        sb.append(line);
+      }
+      return sb.toString();
     }
-  }
-
-  public static void deleteBucket(String bucket) {
-    s3.deleteBucket(bucket);
   }
 }

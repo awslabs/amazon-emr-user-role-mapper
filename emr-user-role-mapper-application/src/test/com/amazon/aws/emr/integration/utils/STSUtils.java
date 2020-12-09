@@ -1,4 +1,4 @@
-package com.amazon.aws.emr.utils;
+package com.amazon.aws.emr.integration.utils;
 
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
@@ -9,9 +9,9 @@ public class STSUtils {
   final static AWSSecurityTokenService sts =
       AWSSecurityTokenServiceClientBuilder.defaultClient();
 
-  public static String getLoggedUser() {
+  public static String getLoggedUserAccount() {
     GetCallerIdentityRequest callerIdentityRequest = new GetCallerIdentityRequest();
     GetCallerIdentityResult getCallerIdentityResult = sts.getCallerIdentity(callerIdentityRequest);
-    return getCallerIdentityResult.getArn();
+    return getCallerIdentityResult.getAccount();
   }
 }

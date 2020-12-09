@@ -1,4 +1,4 @@
-package com.amazon.aws.emr.utils;
+package com.amazon.aws.emr.integration.utils;
 
 import com.amazonaws.services.identitymanagement.AmazonIdentityManagement;
 import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClientBuilder;
@@ -10,13 +10,11 @@ import com.amazonaws.services.identitymanagement.model.CreateRoleResult;
 import com.amazonaws.services.identitymanagement.model.DeletePolicyRequest;
 import com.amazonaws.services.identitymanagement.model.DeleteRoleRequest;
 import com.amazonaws.services.identitymanagement.model.DetachRolePolicyRequest;
-import com.amazonaws.services.identitymanagement.model.DetachRolePolicyResult;
+import com.amazonaws.services.identitymanagement.model.EntityAlreadyExistsException;
+import com.amazonaws.services.identitymanagement.model.GetPolicyRequest;
+import com.amazonaws.services.identitymanagement.model.GetRoleRequest;
 import com.amazonaws.services.identitymanagement.model.Policy;
 import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 
 public class IAMUtils {
 
@@ -24,13 +22,23 @@ public class IAMUtils {
       AmazonIdentityManagementClientBuilder.defaultClient();
 
 
-  public static Policy createPolicy(String policy) {
-    CreatePolicyRequest request = new CreatePolicyRequest()
-        .withPolicyName("urm-policy" + policy.hashCode())
-        .withPolicyDocument(policy);
-
-    CreatePolicyResult response = iam.createPolicy(request);
+  public static Policy createPolicy(String account, String policy) {
+    String policyName = "urm-policy" + policy.hashCode();
+    CreatePolicyResult response;
+    try {
+      CreatePolicyRequest request = new CreatePolicyRequest()
+          .withPolicyName(policyName)
+          .withPolicyDocument(policy);
+      response = iam.createPolicy(request);
+    } catch (EntityAlreadyExistsException ex) {
+      String policyArn = getIamPolicyArn(account, policyName);
+      return iam.getPolicy(new GetPolicyRequest().withPolicyArn(policyArn)).getPolicy();
+    }
     return response.getPolicy();
+  }
+
+  private static String getIamPolicyArn(String account, String policyName) {
+    return String.format("arn:aws:iam::%s:policy/%s", account, policyName);
   }
 
   public static void attachPolicyToRole(String roleArn, String PolicyArn) {
@@ -52,8 +60,13 @@ public class IAMUtils {
   }
 
   public static Role createRole(String name, String policy) {
-    CreateRoleResult createRoleResult = iam.createRole(new CreateRoleRequest().withRoleName(name)
-        .withAssumeRolePolicyDocument(policy));
+    CreateRoleResult createRoleResult;
+    try {
+      createRoleResult = iam.createRole(new CreateRoleRequest().withRoleName(name)
+          .withAssumeRolePolicyDocument(policy));
+    } catch (EntityAlreadyExistsException ex) {
+      return iam.getRole(new GetRoleRequest().withRoleName(name)).getRole();
+    }
     return createRoleResult.getRole();
   }
 
