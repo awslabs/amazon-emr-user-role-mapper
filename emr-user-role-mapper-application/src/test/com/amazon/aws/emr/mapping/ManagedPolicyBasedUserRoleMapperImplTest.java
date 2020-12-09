@@ -2,12 +2,14 @@ package com.amazon.aws.emr.mapping;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.hamcrest.core.Is.is;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.hamcrest.core.Is.is;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
 
 import com.amazon.aws.emr.common.Constants;
 import com.amazon.aws.emr.common.system.PrincipalResolver;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,12 +18,20 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.Mockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({S3BasedUserMappingImplBase.class})
+@PowerMockIgnore({"javax.management.*", "javax.net.ssl.*"})
 public class ManagedPolicyBasedUserRoleMapperImplTest {
 
   ManagedPolicyBasedUserRoleMapperImpl managedPolicyBasedUserRoleMapper;
+
+  @Mock
+  AmazonS3 s3Client;
 
   @Mock
   PrincipalResolver principalResolver;
@@ -29,7 +39,7 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
   private static final String TEST_BUCKET = "testBucket";
   private static final String TEST_KEY = "testKey";
   private static final String MAPPING_ROLE_ARN = "arn:aws:s3:::MappingRole";
-  private static final String mappingJson =  "{\n" +
+  private static final String mappingJson = "{\n" +
       "  \"PrincipalPolicyMappings\": [\n" +
       "    {\n" +
       "      \"username\": \"u1\",\n" +
@@ -57,6 +67,9 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
 
   @Before
   public void setUp() {
+    mockStatic(S3BasedUserMappingImplBase.class);
+    Mockito.when(S3BasedUserMappingImplBase.getS3Client())
+        .thenReturn(s3Client);
     managedPolicyBasedUserRoleMapper =
         new ManagedPolicyBasedUserRoleMapperImpl(TEST_BUCKET, TEST_KEY, principalResolver);
     managedPolicyBasedUserRoleMapper.init(Collections.singletonMap(Constants.ROLE_MAPPING_ROLE_ARN,
@@ -66,8 +79,10 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
 
   @Test
   public void user_with_one_group_assumeRoleRequest() {
-    when(principalResolver.getGroups(eq("u1"))).thenReturn(Optional.of(Collections.singletonList("g1")));
-    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper.getMapping("u1");
+    when(principalResolver.getGroups(eq("u1")))
+        .thenReturn(Optional.of(Collections.singletonList("g1")));
+    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
+        .getMapping("u1");
     assertThat(optionalAssumeRoleRequest.isPresent(), is(true));
     AssumeRoleRequest assumeRoleRequest = optionalAssumeRoleRequest.get();
     assertThat(assumeRoleRequest.getRoleArn(), is(MAPPING_ROLE_ARN));
@@ -81,7 +96,8 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
   @Test
   public void user_with_two_groups_assumeRoleRequest() {
     when(principalResolver.getGroups(eq("u1"))).thenReturn(Optional.of(Arrays.asList("g1", "g2")));
-    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper.getMapping("u1");
+    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
+        .getMapping("u1");
     assertThat(optionalAssumeRoleRequest.isPresent(), is(true));
     AssumeRoleRequest assumeRoleRequest = optionalAssumeRoleRequest.get();
     assertThat(assumeRoleRequest.getRoleArn(), is(MAPPING_ROLE_ARN));
@@ -96,7 +112,8 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
   @Test
   public void user_with_no_groups_assumeRoleRequest() {
     when(principalResolver.getGroups(eq("u1"))).thenReturn(Optional.of(Collections.emptyList()));
-    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper.getMapping("u1");
+    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
+        .getMapping("u1");
     assertThat(optionalAssumeRoleRequest.isPresent(), is(true));
     AssumeRoleRequest assumeRoleRequest = optionalAssumeRoleRequest.get();
     assertThat(assumeRoleRequest.getRoleArn(), is(MAPPING_ROLE_ARN));
@@ -114,7 +131,8 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
 
   @Test
   public void user_with_no_username_mapping_assumeRoleRequest() {
-    when(principalResolver.getGroups(eq("u3"))).thenReturn(Optional.of(Collections.singletonList("g1")));
+    when(principalResolver.getGroups(eq("u3")))
+        .thenReturn(Optional.of(Collections.singletonList("g1")));
     Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
         .getMapping("u3");
     assertThat(optionalAssumeRoleRequest.isPresent(), is(true));
