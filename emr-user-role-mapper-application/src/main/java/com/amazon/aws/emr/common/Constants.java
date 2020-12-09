@@ -5,6 +5,7 @@ package com.amazon.aws.emr.common;
 
 import com.amazon.aws.emr.mapping.DefaultUserRoleMapperImpl;
 
+import com.amazon.aws.emr.mapping.ManagedPolicyBasedUserRoleMapperImpl;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -26,6 +27,10 @@ final public class Constants {
      */
     public static final String ROLE_MAPPING_S3_BUCKET = "rolemapper.s3.bucket";
     /**
+     * AWS Role to be used for role mapping. This is used in {@link ManagedPolicyBasedUserRoleMapperImpl}
+     */
+    public static final String ROLE_MAPPING_ROLE_ARN = "rolemapper.role.arn";
+    /**
      * S3 Bucket for the role mapping file.
      */
     public static final String ROLE_MAPPING_MAX_THREADS = "rolemapper.max.threads";
@@ -37,6 +42,7 @@ final public class Constants {
      * Key for the role mapping file.
      */
     public static final String ROLE_MAPPING_S3_KEY = "rolemapper.s3.key";
+
     /**
      * Duration in mins to check for new mapping.
      */
@@ -50,6 +56,13 @@ final public class Constants {
      * Default S3 Mapper Impl for JSON format.
      */
     public static final String ROLE_MAPPING_DEFAULT_CLASSNAME = DefaultUserRoleMapperImpl.class.getName();
+
+    /**
+     * Default S3 Mapper Impl for JSON format.
+     */
+    public static final String ROLE_MAPPING_MANAGED_POLICY_CLASSNAME = ManagedPolicyBasedUserRoleMapperImpl
+        .class.getName();
+
     /**
      * Constants related with joda DateTime and JSON
      */
@@ -67,6 +80,8 @@ final public class Constants {
     // Default Principal resolver implementation using native system calls
     public static final String DEFAULT_PRINCIPAL_RESOLVER_STRATEGY = "native";
 
+    public static final String IMPERSONATION_ALLOWED_USERS = "rolemapper.impersonation.allowed.users";
+
     private Constants() {
     }
 
@@ -78,6 +93,16 @@ final public class Constants {
          * Hex value of 127.0.0.1 in /proc/net/tcp file in reverse byte order
          */
         public static final String IPV4_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "0100007F";
+
+        /**
+         * Hex value of ::1 in /proc/net/tcp6 file in reverse byte order
+         */
+        public static final String IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "00000000000000000000000001000000";
+
+        /**
+         * Hex value of IPv4 127.0.0.1 in /proc/net/tcp6 file in reverse byte order
+         */
+        public static final String IPV4_MAPPED_IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "0000000000000000FFFF00000100007F";
 
         /**
          * Hex value of 160 in /proc/net/tcp file in reverse byte order

@@ -20,6 +20,7 @@ import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.util.Properties;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +42,8 @@ import java.util.Optional;
  */
 @NoArgsConstructor
 @Slf4j
-public class DefaultUserRoleMapperImpl implements UserRoleMapperProvider {
+public class DefaultUserRoleMapperImpl extends S3BasedUserMappingImplBase
+    implements UserRoleMapperProvider {
 
     static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
     private static final Gson GSON = new GsonBuilder()
@@ -53,9 +55,6 @@ public class DefaultUserRoleMapperImpl implements UserRoleMapperProvider {
     private final Map<String, AssumeRoleRequest> userRoleMapping = new HashMap<>();
     private final Map<String, AssumeRoleRequest> groupRoleMapping = new HashMap<>();
 
-    private String bucketName;
-    private String key;
-    private String etag;
     private PrincipalResolver principalResolver;
 
     public DefaultUserRoleMapperImpl(String bucketName, String key, PrincipalResolver principalResolver) {
@@ -70,7 +69,7 @@ public class DefaultUserRoleMapperImpl implements UserRoleMapperProvider {
     /**
      * Inits the mapper.
      */
-    public void init() {
+    public void init(Map<String, String> configMap) {
     }
 
     /**
@@ -99,49 +98,12 @@ public class DefaultUserRoleMapperImpl implements UserRoleMapperProvider {
     }
 
     /**
-     * Checks if the S3 source has a new mapping since the last refresh interval.
-     * If a new mapping is present then reloads mappings in a thread safe manner.
-     */
-    public void refresh() {
-        log.debug("Checking if need to load mapping again from S3 from {}/{}", bucketName, key);
-        ObjectMetadata objectMetadata = s3Client.getObjectMetadata(bucketName, key);
-        if (objectMetadata.getETag().equals(etag)) {
-            log.debug("Nothing to do as current etag {} matches the last one.", objectMetadata.getETag());
-        } else {
-            log.info("Seems we have new mapping - reload it.");
-            readMapping();
-            log.info("Done with the reload.");
-        }
-    }
-
-    private void readMapping() {
-        log.info("Load the mapping from S3 from {}/{}", bucketName, key);
-        try (S3Object s3object = s3Client.getObject(new GetObjectRequest(
-                bucketName, key))){
-            S3ObjectInputStream s3InputStream = s3object.getObjectContent();
-            String jsonString = null;
-            try {
-                jsonString = getS3FileAsString(s3InputStream);
-            } catch (IOException e) {
-                throw new RuntimeException("Could not fetch the mapping file from S3.");
-            }
-            // Update the ETag
-            etag = s3object.getObjectMetadata().getETag();
-            populateMaps(jsonString);
-        } catch (AmazonClientException ace) {
-            log.error("AWS exception {}", ace.getMessage(), ace);
-        } catch (IOException e) {
-            log.error("Could not load mapping from S3", e);
-        }
-    }
-
-    /**
      * Populates the internal maps with the mapping in S3.
      * The format for the JSON can be found in {@code PrincipalRoleMappings}.
      *
      * @param jsonString the S3 JSON represented as a String.
      */
-    private void populateMaps(String jsonString) {
+    void processFile(String jsonString) {
         log.info("Received the following JSON {}", jsonString);
         PrincipalRoleMappings principalRoleMappings = GSON.fromJson(jsonString, PrincipalRoleMappings.class);
         // Clear the old mapping now since we found a new valid mapping!
@@ -177,20 +139,6 @@ public class DefaultUserRoleMapperImpl implements UserRoleMapperProvider {
                 groupRoleMapping.put(principal, assumeRoleRequest);
             }
             log.info("Mapped {} to {}", principal, assumeRoleRequest);
-        }
-    }
-
-    private static String getS3FileAsString(InputStream is) throws IOException {
-        if (is == null)
-            return null;
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            return sb.toString();
         }
     }
 }

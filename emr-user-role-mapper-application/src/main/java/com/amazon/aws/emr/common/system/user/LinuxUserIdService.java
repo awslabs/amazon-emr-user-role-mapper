@@ -64,13 +64,21 @@ public class LinuxUserIdService implements UserIdService {
     /**
      * Resolve linux user id via linux /proc/net/tcp(6)
      *
+     * For intercepted IMDS call, a validation is performed to ensure that the target is indeed IMDS,
+     *  and the call is made locally.
+     *
+     * For non-IMDS call, only ensure that the call is made locally
+     *
      * @param localAddr
      * @param localPort
      * @param remoteAddr
      * @param remotePort
+     * @param isNativeIMDSApi
      * @return
      */
-    public OptionalInt resolveSystemUID(String localAddr, int localPort, String remoteAddr, int remotePort) {
+    public OptionalInt resolveSystemUID(String localAddr, int localPort,
+                                        String remoteAddr, int remotePort,
+                                        boolean isNativeIMDSApi) {
 
         if (!isLocalhost(localAddr)) {
             log.debug("Local address is not localhost on the HTTP socket!");
@@ -81,7 +89,7 @@ public class LinuxUserIdService implements UserIdService {
         try (BufferedReader br = new BufferedReader(new FileReader(ipV4Path))) {
             String line;
             while ((line = br.readLine()) != null) {
-                uid = getUID(line, localPort, remotePort, remoteAddr);
+                uid = getUID(line, localPort, remotePort, remoteAddr, isNativeIMDSApi);
                 if (uid.isPresent()) {
                     return uid;
                 }
@@ -94,7 +102,7 @@ public class LinuxUserIdService implements UserIdService {
         try (BufferedReader br = new BufferedReader(new FileReader(ipV6Path))) {
             String line;
             while ((line = br.readLine()) != null) {
-                uid = getUID(line, localPort, remotePort, remoteAddr);
+                uid = getUID(line, localPort, remotePort, remoteAddr, isNativeIMDSApi);
                 if (uid.isPresent()) {
                     return uid;
                 }
@@ -107,14 +115,18 @@ public class LinuxUserIdService implements UserIdService {
         return OptionalInt.empty();
     }
 
-    private OptionalInt getUID(String line, int reqLocalPort, int reqRemotePort, String procRemoteAddress) {
+    private OptionalInt getUID(String line, int reqLocalPort,
+                               int reqRemotePort, String procRemoteAddress,
+                               boolean isNativeIMDSApi) {
         return getUID(
                 line,
                 procRemoteAddress,
-                reqLocalPort, reqRemotePort);
+                reqLocalPort, reqRemotePort, isNativeIMDSApi);
     }
 
-    private OptionalInt getUID(String line, String remoteAddr, int reqLocalPort, int reqRemotePort) {
+    private OptionalInt getUID(String line, String remoteAddr,
+                               int reqLocalPort, int reqRemotePort,
+                               boolean isNativeIMDSApi) {
         Matcher matcher = pattern.matcher(line);
         if (!matcher.matches()) {
             return OptionalInt.empty();
@@ -130,14 +142,25 @@ public class LinuxUserIdService implements UserIdService {
         long procRemotePort = Long.parseLong(matcher.group(4), 16);
         long state = Long.parseLong(matcher.group(5), 16);
         int uid = Integer.parseInt(matcher.group(6));
-        // TODO - Also check proc local address is the local ip address
-        if ((procRemoteAddress.equals(Constants.Network.IPV4_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER) ||
-                procRemoteAddress.equals(Constants.Network.IPV6_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER))
-                && procLocalPort == reqRemotePort
-                && procRemotePort == 80
-                && state == TCP_ESTABLISHED
-        ) {
-            return OptionalInt.of(uid);
+
+        if (isNativeIMDSApi) {
+            if ((procRemoteAddress.equals(Constants.Network.IPV4_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER) ||
+                    procRemoteAddress.equals(Constants.Network.IPV6_IMDS_ADDR_IN_HEX_REVERSED_BYTE_ORDER))
+                    && procLocalPort == reqRemotePort
+                    && procRemotePort == 80
+                    && state == TCP_ESTABLISHED
+            ) {
+                return OptionalInt.of(uid);
+            }
+        } else {
+            // Socket established directly from caller process to the server for below use cases:
+            // 1/ impersonation request from EMR-FS
+            if ((procLocalPort == reqRemotePort && procRemotePort == Constants.JETTY_PORT)
+                    && (procRemoteAddress.equals(Constants.Network.IPV4_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER)
+                    || procRemoteAddress.equals(Constants.Network.IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER)
+                    || procRemoteAddress.equals(Constants.Network.IPV4_MAPPED_IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER))) {
+                return OptionalInt.of(uid);
+            }
         }
 
         return OptionalInt.empty();

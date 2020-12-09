@@ -10,9 +10,9 @@ public class IntegrationTestsUserService implements UserIdService {
 
   @Override
   public OptionalInt resolveSystemUID(String localAddr, int localPort, String remoteAddr,
-      int remotePort) {
+      int remotePort, boolean isNativeIMDSApi) {
     int uid = OSUtils.getUid();
-    log.info("Detected callers uid as {}", uid);
+    log.info("Detected caller uid as {}", uid);
     return OptionalInt.of(uid);
   }
 }
