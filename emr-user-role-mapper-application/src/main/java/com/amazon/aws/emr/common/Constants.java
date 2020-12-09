@@ -80,6 +80,8 @@ final public class Constants {
     // Default Principal resolver implementation using native system calls
     public static final String DEFAULT_PRINCIPAL_RESOLVER_STRATEGY = "native";
 
+    public static final String IMPERSONATION_ALLOWED_USERS = "rolemapper.impersonation.allowed.users";
+
     private Constants() {
     }
 
@@ -91,6 +93,16 @@ final public class Constants {
          * Hex value of 127.0.0.1 in /proc/net/tcp file in reverse byte order
          */
         public static final String IPV4_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "0100007F";
+
+        /**
+         * Hex value of ::1 in /proc/net/tcp6 file in reverse byte order
+         */
+        public static final String IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "00000000000000000000000001000000";
+
+        /**
+         * Hex value of IPv4 127.0.0.1 in /proc/net/tcp6 file in reverse byte order
+         */
+        public static final String IPV4_MAPPED_IPV6_LOCALHOST_ADDR_IN_HEX_REVERSED_BYTE_ORDER = "0000000000000000FFFF00000100007F";
 
         /**
          * Hex value of 160 in /proc/net/tcp file in reverse byte order

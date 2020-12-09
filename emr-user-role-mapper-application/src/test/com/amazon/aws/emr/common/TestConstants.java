@@ -11,7 +11,9 @@ public class TestConstants {
     public static final String USER1_ROLE_NAME = "u1";
     public static final String USER2_ROLE_NAME = "u2";
     public static final int UNMAPPED_UID = 505;
+    public static final String UNMAPPED_USER_NAME = "u3";
     public static final int GROUP_MAPPED_UID = 506;
     public static final String GROUP_ROLE_NAME = "g1";
-
+    public static final int HIVE_USER_UID = 1001;
+    public static final int PRESTO_USER_UID = 1002;
 }

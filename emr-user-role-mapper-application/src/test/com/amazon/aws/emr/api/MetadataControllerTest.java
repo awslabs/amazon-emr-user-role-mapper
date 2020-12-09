@@ -81,6 +81,7 @@ public class MetadataControllerTest extends JerseyTest {
                 bind(osUserIdentificationService).to(UserIdService.class);
                 bind(TestCommandBasedPrincipalResolver.class).to(PrincipalResolver.class).in(Singleton.class);
                 bind(MappingInvoker.class).to(MappingInvoker.class).in(Singleton.class);
+                bind(TestCommandBasedPrincipalResolver.class).to(PrincipalResolver.class).in(Singleton.class);
                 bind(TestMetadataCredentialsProvider.class).to(MetadataCredentialsProvider.class).in(Singleton.class);
                 bind(ApplicationConfiguration.class).to(ApplicationConfiguration.class).in(Immediate.class);
             }
@@ -105,7 +106,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void list_mapped_user_roles() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH);
         String actualRoleName = target.request().get(String.class);
@@ -116,7 +117,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void list_empty_userid_roles() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.empty());
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH);
         String actualRoleName = target.request().get(String.class);
@@ -127,7 +128,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void list_unknown_username_roles() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.UNKNOWN_USERNAME_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH);
         String actualRoleName = target.request().get(String.class);
@@ -137,7 +138,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void list_unmapped_username_roles() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.UNMAPPED_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH);
         String actualRoleName = target.request().get(String.class);
@@ -147,7 +148,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void get_mapped_user_role_credentials() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH + TestConstants.USER1_ROLE_NAME);
         String actualCredentials = target.request().get(String.class);
@@ -157,7 +158,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void get_empty_userid_role_credentials() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.empty());
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH + TestConstants.USER1_ROLE_NAME);
         String actualCredentials = target.request().get(String.class);
@@ -167,7 +168,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void get_unknown_username_role_credentials() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.UNKNOWN_USERNAME_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH + TestConstants.USER1_ROLE_NAME);
         String actualCredentials = target.request().get(String.class);
@@ -177,7 +178,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void get_unauthorized_role_access_empty_credentials() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH + TestConstants.USER2_ROLE_NAME);
         String actualCredentials = target.request().get(String.class);
@@ -187,7 +188,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void group_mapped_role_credentials() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.GROUP_MAPPED_UID));
         WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_ROOT_PATH + TestConstants.GROUP_ROLE_NAME);
         String actualCredentials = target.request().get(String.class);
@@ -215,7 +216,7 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void uri_with_slashes_normalized() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
         WebTarget target = target("///latest/meta-data///iam///security-credentials///");
         String actualRoleName = target.request().get(String.class);
@@ -225,11 +226,67 @@ public class MetadataControllerTest extends JerseyTest {
     @Test
     public void uri_with_dots_normalized() {
         when(osUserIdentificationService.resolveSystemUID
-                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt()))
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(true)))
                 .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
         WebTarget target = target("/latest/meta-data/./iam/./security-credentials/");
         String actualRoleName = target.request().get(String.class);
         assertThat(actualRoleName, is(TestConstants.USER1_ROLE_NAME));
+    }
+
+    @Test
+    public void impersonation_from_authorized_user() {
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.of(TestConstants.HIVE_USER_UID));
+        WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.USER1_ROLE_NAME);
+        String actualCredentials = target.request().get(String.class);
+        assertCorrectCredentials(actualCredentials);
+
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.of(TestConstants.PRESTO_USER_UID));
+        target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.USER1_ROLE_NAME);
+        actualCredentials = target.request().get(String.class);
+        assertCorrectCredentials(actualCredentials);
+    }
+
+    @Test
+    public void impersonation_from_invalid_user() {
+        // uid cannot be identified
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.empty());
+        WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.USER1_ROLE_NAME);
+        String actualCredentials = target.request().get(String.class);
+        assertThat(actualCredentials, is(TestConstants.EMPTY_ROLE_CREDENTIALS));
+
+        // Username is not available for identified uid
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.of(9999));
+        target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.USER1_ROLE_NAME);
+        actualCredentials = target.request().get(String.class);
+        assertThat(actualCredentials, is(TestConstants.EMPTY_ROLE_CREDENTIALS));
+    }
+
+    @Test
+    public void impersonation_from_authorized_user_on_unmapped_user() {
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.of(TestConstants.HIVE_USER_UID));
+        WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.UNMAPPED_USER_NAME);
+        String actualCredentials = target.request().get(String.class);
+        assertThat(actualCredentials, is(TestConstants.EMPTY_ROLE_CREDENTIALS));
+    }
+
+    @Test
+    public void impersonation_from_unauthorized_user() {
+        when(osUserIdentificationService.resolveSystemUID
+                (Mockito.anyString(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyInt(), Mockito.eq(false)))
+                .thenReturn(OptionalInt.of(TestConstants.USER1_UID));
+        WebTarget target = target(MetadataController.LATEST_IAM_CREDENTIALS_WITH_IMPERSONATION + TestConstants.USER1_ROLE_NAME);
+        String actualCredentials = target.request().get(String.class);
+        assertThat(actualCredentials, is(TestConstants.EMPTY_ROLE_CREDENTIALS));
     }
 
     private void assertCorrectCredentials(String actualCredentials) {

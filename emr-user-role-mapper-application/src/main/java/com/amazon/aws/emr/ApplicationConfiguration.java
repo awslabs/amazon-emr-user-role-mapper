@@ -4,6 +4,7 @@
 package com.amazon.aws.emr;
 
 import com.amazon.aws.emr.common.Constants;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class ApplicationConfiguration {
 
     private final static String PROPS_FILE = "/user-role-mapper.properties";
     private Properties properties = new Properties();
+    private ImmutableSet<String> IMPERSONATION_ALLOWED_USERS = ImmutableSet.of();
 
     @PostConstruct
     public void init() {
@@ -34,6 +36,13 @@ public class ApplicationConfiguration {
                 throw new RuntimeException("Invalid configuration!");
             }
             log.info("Loaded " + properties.toString());
+
+            if (properties.containsKey(Constants.IMPERSONATION_ALLOWED_USERS)) {
+                IMPERSONATION_ALLOWED_USERS = ImmutableSet
+                        .copyOf(properties.getProperty(Constants.IMPERSONATION_ALLOWED_USERS).split(","))
+                        .stream().map(String::trim).collect(ImmutableSet.toImmutableSet());
+                log.info("Loaded allowed users for impersonation: {}", IMPERSONATION_ALLOWED_USERS);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Could not load properties file", e);
         }
@@ -88,6 +97,9 @@ public class ApplicationConfiguration {
         properties.put(propertyName, value);
     }
 
+    public Set<String> getAllowedUsersForImpersonation() {
+        return this.IMPERSONATION_ALLOWED_USERS;
+    }
     public Map<String, String> asMap() {
         return Maps.fromProperties(properties);
     }
