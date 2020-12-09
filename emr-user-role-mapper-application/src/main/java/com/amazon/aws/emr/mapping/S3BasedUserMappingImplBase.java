@@ -23,11 +23,11 @@ public abstract class S3BasedUserMappingImplBase {
   protected String bucketName;
   protected String key;
   protected String etag;
-  static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+  protected static AmazonS3 s3Client = null;
 
   public void refresh() {
     log.debug("Checking if need to load mapping again from S3 from {}/{}", bucketName, key);
-    ObjectMetadata objectMetadata = s3Client.getObjectMetadata(bucketName, key);
+    ObjectMetadata objectMetadata = getS3Client().getObjectMetadata(bucketName, key);
     if (objectMetadata.getETag().equals(etag)) {
       log.debug("Nothing to do as current etag {} matches the last one.", objectMetadata.getETag());
     } else {
@@ -46,8 +46,8 @@ public abstract class S3BasedUserMappingImplBase {
 
   private void readMapping() {
     log.info("Load the mapping from S3 from {}/{}", bucketName, key);
-    try (S3Object s3object = s3Client.getObject(new GetObjectRequest(
-        bucketName, key))){
+    try (S3Object s3object = getS3Client().getObject(new GetObjectRequest(
+        bucketName, key))) {
       S3ObjectInputStream s3InputStream = s3object.getObjectContent();
       String jsonString = null;
       try {
@@ -66,8 +66,9 @@ public abstract class S3BasedUserMappingImplBase {
   }
 
   private static String getS3FileAsString(InputStream is) throws IOException {
-    if (is == null)
+    if (is == null) {
       return null;
+    }
     StringBuilder sb = new StringBuilder();
     try (BufferedReader reader = new BufferedReader(
         new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -77,5 +78,14 @@ public abstract class S3BasedUserMappingImplBase {
       }
       return sb.toString();
     }
+  }
+
+  synchronized static AmazonS3 getS3Client() {
+    if (s3Client == null) {
+      s3Client = AmazonS3ClientBuilder
+          .standard()
+          .build();
+    }
+    return s3Client;
   }
 }
