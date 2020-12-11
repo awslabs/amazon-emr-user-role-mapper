@@ -31,6 +31,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AfterClass;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -132,9 +133,14 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
     }
   }
 
+  @Before
+  public void beforeMethod() {
+    // Skip tests if the underlying OS is not supported.
+    Assume.assumeFalse(!isOsSupported());
+  }
+
   @Test
   public void list_roles_api() throws Exception {
-    Assume.assumeFalse(!isOsSupported());
     HttpUriRequest request =
         new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI);
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
@@ -145,7 +151,6 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
 
   @Test
   public void credentials_api() throws Exception {
-    Assume.assumeFalse(!isOsSupported());
     HttpUriRequest request =
         new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + testRoleName);
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
@@ -162,12 +167,11 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
         .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
         .build();
     S3Object s3Object = s3.getObject(new GetObjectRequest(TEST_CFG_BUCKET, TEST_CFG_OBJECT));
-    assertThat(S3Utils.getS3FileAsString(s3Object.getObjectContent()), is(TEST_S3_OBJECT_CONTENTS));
+    assertThat(S3Utils.getS3FileAsString(s3Object), is(TEST_S3_OBJECT_CONTENTS));
   }
 
   @Test
   public void reload_config_no_mapping_no_credentials() throws Exception {
-    Assume.assumeFalse(!isOsSupported());
     S3Utils.createBucket(IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET);
     String defaultImplMappingJson = defaultImplMappingJsonTemplate
         .replaceFirst(USER_TO_CHANGE, user)

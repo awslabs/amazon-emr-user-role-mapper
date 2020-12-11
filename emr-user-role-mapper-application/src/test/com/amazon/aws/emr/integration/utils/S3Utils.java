@@ -1,9 +1,9 @@
 package com.amazon.aws.emr.integration.utils;
 
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
+import com.amazonaws.services.s3.model.S3Object;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,7 +44,8 @@ public class S3Utils {
     s3.putObject(bucket, key, fileContents);
   }
 
-  public static String getS3FileAsString(InputStream is) throws IOException {
+  public static String getS3FileAsString(S3Object s3Object) throws IOException {
+    InputStream is = s3Object.getObjectContent();
     if (is == null) {
       return null;
     }
