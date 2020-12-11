@@ -12,7 +12,11 @@ public class DefaultMapperImplApplicationConfig extends ApplicationConfiguration
 
   @PostConstruct
   public void init() {
-    properties.setProperty(Constants.ROLE_MAPPING_S3_BUCKET, IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET);
-    properties.setProperty(Constants.ROLE_MAPPING_S3_KEY, IntegrationTestBase.DEFAULT_MAPPER_IMPL_MAPPING);
+    properties.setProperty(Constants.ROLE_MAPPING_S3_BUCKET,
+        IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET);
+    properties.setProperty(Constants.ROLE_MAPPING_S3_KEY,
+        IntegrationTestBase.DEFAULT_MAPPER_IMPL_MAPPING);
+    properties.setProperty(Constants.ROLE_MAPPPING_REFRESH_INTERVAL_MIN,
+        String.valueOf(IntegrationTestBase.RELOAD_CFG_TIME_MIN));
   }
 }

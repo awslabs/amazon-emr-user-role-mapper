@@ -10,10 +10,10 @@ import org.glassfish.jersey.server.ResourceConfig;
 /**
  * The Jersey servlet application.
  */
-public class UserRoleMapperIntegrationApplication extends ResourceConfig {
+public class DefaultProviderImplIntegrationApplication extends ResourceConfig {
 
     @Inject
-    public UserRoleMapperIntegrationApplication() {
+    public DefaultProviderImplIntegrationApplication() {
         String[] pkgs = new String[]{"com.amazon.aws.emr.api", "com.amazon.aws.emr.mapping"};
         packages(pkgs);
         register(ImmediateFeature.class);

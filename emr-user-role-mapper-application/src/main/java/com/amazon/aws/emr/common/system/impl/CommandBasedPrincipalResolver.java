@@ -54,7 +54,7 @@ public class CommandBasedPrincipalResolver extends AbstractPrincipalResolver {
      * In case of any error such as a non zero return code from subprocess, exception etc
      * returns an empty list.
      */
-    protected List<String> runCommand(List<String> command) {
+    public List<String> runCommand(List<String> command) {
         List<String> commandOutput = new ArrayList<>();
 
         try {

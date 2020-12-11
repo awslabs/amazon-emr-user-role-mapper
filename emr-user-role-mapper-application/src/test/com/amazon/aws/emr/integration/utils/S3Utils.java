@@ -4,8 +4,6 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.ListObjectsV2Result;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class S3Utils {
 
-  final static AmazonS3 s3 = AmazonS3ClientBuilder.standard().withRegion(Regions.DEFAULT_REGION)
+  final static AmazonS3 s3 = AmazonS3ClientBuilder.standard()
       .build();
 
   public static Bucket createBucket(String bucket_name) {
@@ -47,8 +45,9 @@ public class S3Utils {
   }
 
   public static String getS3FileAsString(InputStream is) throws IOException {
-    if (is == null)
+    if (is == null) {
       return null;
+    }
     StringBuilder sb = new StringBuilder();
     try (BufferedReader reader = new BufferedReader(
         new InputStreamReader(is, StandardCharsets.UTF_8))) {

@@ -16,6 +16,9 @@ import com.amazonaws.services.identitymanagement.model.GetRoleRequest;
 import com.amazonaws.services.identitymanagement.model.Policy;
 import com.amazonaws.services.identitymanagement.model.Role;
 
+/**
+ * Utility methods for AWS IAM.
+ */
 public class IAMUtils {
 
   final static AmazonIdentityManagement iam =
@@ -69,7 +72,6 @@ public class IAMUtils {
     }
     return createRoleResult.getRole();
   }
-
 
   public static void deletePolicy(String policyArn) {
     DeletePolicyRequest deletePolicyRequest = new DeletePolicyRequest();
