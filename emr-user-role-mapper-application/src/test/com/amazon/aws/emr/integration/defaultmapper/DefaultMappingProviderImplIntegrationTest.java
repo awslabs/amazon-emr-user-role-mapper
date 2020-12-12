@@ -131,6 +131,9 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
     if (testPolicyArn != null) {
       IAMUtils.deletePolicy(testPolicyArn);
     }
+    S3Utils.deleteObject(IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET,
+        IntegrationTestBase.DEFAULT_MAPPER_IMPL_MAPPING);
+    S3Utils.deleteBucket(DEFAULT_MAPPER_IMPL_BUCKET);
   }
 
   @Before
@@ -171,16 +174,19 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
   }
 
   @Test
-  public void reload_config_no_mapping_no_credentials() throws Exception {
-    S3Utils.createBucket(IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET);
+  public void reload_config_with_no_role_mapping_gives_no_credentials() throws Exception {
+    HttpUriRequest request =
+        new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI);
+    HttpResponse beforeMappingChangeHttpResponse = HttpClientBuilder.create().build().execute(request);
+    assertThat(beforeMappingChangeHttpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_OK));
+    // Now change the mapping file with no role mapping
     String defaultImplMappingJson = defaultImplMappingJsonTemplate
         .replaceFirst(USER_TO_CHANGE, user)
         .replaceFirst(USER_ROLE_TO_CHANGE, "arn:aws:iam::12345678912:role/test-urm-2");
     S3Utils.uploadObject(IntegrationTestBase.DEFAULT_MAPPER_IMPL_BUCKET,
         IntegrationTestBase.DEFAULT_MAPPER_IMPL_MAPPING, defaultImplMappingJson);
+    // Sleep long enough for new mapping to be in effect.
     Thread.sleep(RELOAD_CFG_TIME_MIN * 60 * 1000);
-    HttpUriRequest request =
-        new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI);
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
     assertThat(httpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_OK));
     String responseString = new BasicResponseHandler().handleResponse(httpResponse);

@@ -18,9 +18,9 @@ public class IntegrationTestBase {
   public static String DEFAULT_MAPPER_IMPL_MAPPING = "default-impl.json";
   protected static String LOCALHOST_SERVER = "http://localhost";
   protected static String IMDS_CREDENTIALS_URI = "/latest/meta-data/iam/security-credentials/";
-  protected static String USER_TO_CHANGE = "USER_TO_CHANGE";
-  protected static String USER_ROLE_TO_CHANGE = "USER_ROLE_TO_CHANGE";
-  protected static String AWS_ACCOUNT_TO_CHANGE = "AWS_ACCOUNT_TO_CHANGE";
+  protected static String USER_TO_CHANGE = "#USER_TO_CHANGE#";
+  protected static String USER_ROLE_TO_CHANGE = "#USER_ROLE_TO_CHANGE#";
+  protected static String AWS_ACCOUNT_TO_CHANGE = "#AWS_ACCOUNT_TO_CHANGE#";
   protected static String user = System.getProperty("user.name");
   protected static String TEST_CFG_BUCKET = "test-urm-bucket-" + user;
   protected static String TEST_CFG_OBJECT = "test-urm-object-" + user;
