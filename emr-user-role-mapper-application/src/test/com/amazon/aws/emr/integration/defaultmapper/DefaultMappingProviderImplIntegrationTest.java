@@ -174,7 +174,7 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
   }
 
   @Test
-  public void reload_config_with_no_role_mapping_gives_no_credentials() throws Exception {
+  public void reload_config_with_changed_role_mapping_gives_new_role() throws Exception {
     HttpUriRequest request =
         new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI);
     HttpResponse beforeMappingChangeHttpResponse = HttpClientBuilder.create().build().execute(request);
