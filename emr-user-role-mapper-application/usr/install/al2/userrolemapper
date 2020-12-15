@@ -1,0 +1,44 @@
+#!/bin/bash -ex
+
+# Amazon EMR
+#
+# Copyright 2020, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Amazon Software License (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+#   http://aws.amazon.com/asl/
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
+
+env SLEEP_TIME=10
+
+DAEMON="emr-user-role-mapper"
+DESC="Starts EMR Record Server"
+EXEC_PATH="/usr/share/aws/emr/user-role-mapper/lib"
+SVC_USER="userrolemapper"
+DAEMON_FLAGS=""
+CONF_DIR="/usr/share/aws/emr/user-role-mapper/conf/"
+PIDFILE="/var/run/emr-user-role-mapper/emr-user-role-mapper.pid"
+WORKING_DIR="/var/lib/emr-user-role-mapper"
+EMRUSERROLEMAPPER_HOME="/usr/share/aws/emr/user-role-mapper"
+CLASSPATH="/usr/share/aws/emr/user-role-mapper/lib/*:/usr/share/aws/emr/user-role-mapper/conf/"
+CONF="${EMRUSERROLEMAPPER_HOME}/conf/rolemapper.properties"
+LOG_FILE=/tmp/${DAEMON}.out
+
+JAVA_HEAPSIZE="-Xms200m -Xmx1024m"
+JAVA_OPTS="${JAVA_HEAPSIZE} -XX:+UseGCOverheadLimit  -XX:+HeapDumpOnOutOfMemoryError  -XX:OnOutOfMemoryError=\"kill -9 %p\" -XX:ReservedCodeCacheSize=150M  -XX:+PrintCommandLineFlags -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintTenuringDistribution -XX:-UseAdaptiveSizePolicy -XX:MaxTenuringThreshold=15 -Xloggc:/tmp/$DAEMON-garbage-collection.log -XX:+PrintFlagsFinal -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=128M"
+
+if [ ! -d $CONF_DIR ]; then
+    echo "$CONF_DIR is not a directory"
+    exit 1
+fi
+
+su -s /bin/bash $SVC_USER -c "nohup nice -n 0 \
+  /usr/bin/java ${JAVA_OPTS} -cp ${CLASSPATH} \
+  com.amazon.aws.emr.UserRoleMappingServer \
+  > $LOG_FILE 2>&1 & "'echo $!' > "$PIDFILE"
