@@ -10,11 +10,6 @@ import com.amazon.aws.emr.rolemapper.UserRoleMapperProvider;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import lombok.extern.slf4j.Slf4j;
-import org.glassfish.hk2.api.Immediate;
-
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
@@ -24,6 +19,10 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
+import org.glassfish.hk2.api.Immediate;
 
 /**
  * Maps username to the {@code AssumeRoleRequest}.
@@ -53,15 +52,18 @@ public class MappingInvoker {
     void init() {
         try {
             String className = applicationConfiguration.getProperty(Constants.ROLE_MAPPER_CLASS,
-                    Constants.ROLE_MAPPING_DEFAULT_CLASSNAME);
+                Constants.ROLE_MAPPING_DEFAULT_CLASSNAME);
             log.info("Trying to load {}", className);
             if (isS3BasedProviderImpl(className)) {
                 // For our default mapper implementation we need at least the S3 bucket name and key
                 Constructor c = Class.forName(className)
-                                     .getConstructor(String.class, String.class, PrincipalResolver.class);
-                String bucketName = applicationConfiguration.getProperty(Constants.ROLE_MAPPING_S3_BUCKET, null);
-                String key = applicationConfiguration.getProperty(Constants.ROLE_MAPPING_S3_KEY, null);
-                roleMapperProvider = (UserRoleMapperProvider) c.newInstance(bucketName, key, principalResolver);
+                    .getConstructor(String.class, String.class, PrincipalResolver.class);
+                String bucketName = applicationConfiguration
+                    .getProperty(Constants.ROLE_MAPPING_S3_BUCKET, null);
+                String key = applicationConfiguration
+                    .getProperty(Constants.ROLE_MAPPING_S3_KEY, null);
+                roleMapperProvider = (UserRoleMapperProvider) c
+                    .newInstance(bucketName, key, principalResolver);
                 log.info("Successfully created the mapper using {}/{}", bucketName, key);
             } else {
                 Class clazz = Class.forName(className);
@@ -70,11 +72,11 @@ public class MappingInvoker {
             roleMapperProvider.init(applicationConfiguration.asMap());
             log.info("Initialized the mapper.");
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            log.error("Could not load the mapper", e);
+            log.error("Could not load the mapper " + e.getMessage());
             throw new RuntimeException("Could not load the mapper class", e);
         } catch (Throwable t) {
-            log.error("Could not load the mapper", t);
-            throw new RuntimeException("Could not initialize the mapper", t);
+          log.error("Could not load the mapper " + t.getMessage());
+          throw new RuntimeException("Could not load the mapper class", t);
         }
         int refreshIntervalMins = Integer.parseInt(applicationConfiguration.getProperty
                 (Constants.ROLE_MAPPPING_REFRESH_INTERVAL_MIN, Constants.ROLE_MAPPPING_DEFAULT_REFRESH_INTERVAL_MIN));

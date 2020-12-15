@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class ApplicationConfiguration {
 
     private final static String PROPS_FILE = "/user-role-mapper.properties";
-    private Properties properties = new Properties();
+    protected Properties properties = new Properties();
     private ImmutableSet<String> IMPERSONATION_ALLOWED_USERS = ImmutableSet.of();
 
     @PostConstruct
