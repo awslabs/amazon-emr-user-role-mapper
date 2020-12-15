@@ -13,7 +13,6 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-
 if [[ $# -lt 2 ]]; then
   echo "Two parameters are required to call this script. Usage: "
   echo "$0 <S3 Bucket of URM Artifacts> <S3 Path of URM Artifacts> "
@@ -177,6 +176,7 @@ sudo chown -R userrolemapper:hadoop /emr/user-role-mapper
 
 echo "Getting artifacts from S3"
 
+
 echo "Getting log4j.properties from S3"
 sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/log4j.properties /usr/share/aws/emr/user-role-mapper/conf
 echo "Getting user-role-mapper.properties from S3"
@@ -184,15 +184,34 @@ sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/user-role-mapper.properties /usr/share/
 echo "Getting and setting mappings.json"
 sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/mappings.json /usr/share/aws/emr/user-role-mapper/conf
 sudo sed -i "s#\$AWS_ROLE#${ROLE_ARN}#g" /usr/share/aws/emr/user-role-mapper/conf/mappings.json
-echo "Getting emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar"
+echo "Getting emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar from S3"
 sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar /usr/share/aws/emr/user-role-mapper/lib/
-echo "Getting emr-user-role-mapper.conf from S3"
-sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper.conf /etc/init/
-echo "Reload config"
-sudo initctl reload-configuration
-echo "Start the service"
-sudo initctl start emr-user-role-mapper
-sudo status emr-user-role-mapper
+
+# Check if we are on AL2
+which systemctl 2>/dev/null
+if [[ $? -eq 0 ]]; then
+    echo "Getting emr-user-role-mapper.service from S3"
+    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/emr-user-role-mapper.service /etc/systemd/system/
+    echo "Copying Init.d files"
+    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/emr-user-role-mapper /etc/init.d/
+    sudo chmod 750 /etc/init.d/emr-user-role-mapper
+    echo "Copying startup scripts"
+    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/userrolemapper /usr/bin/
+    sudo chmod 750 /usr/bin/userrolemapper
+    echo "Reload config"
+    sudo systemctl enable emr-user-role-mapper.service
+    echo "Start the service"
+    sudo systemctl start emr-user-role-mapper
+    sudo systemctl status emr-user-role-mapper
+else
+    echo "Getting emr-user-role-mapper.conf from S3"
+    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al1/emr-user-role-mapper.conf /etc/init/
+    echo "Reload config"
+    sudo initctl reload-configuration
+    echo "Start the service"
+    sudo initctl start emr-user-role-mapper
+    sudo status emr-user-role-mapper
+fi
 
 setup_iptable_rules
 echo "Done!"
