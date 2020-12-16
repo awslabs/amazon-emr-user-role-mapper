@@ -1,5 +1,6 @@
 package com.amazon.aws.emr.integration.utils;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
@@ -42,6 +43,22 @@ public class S3Utils {
 
   public static void uploadObject(String bucket, String key, String fileContents) {
     s3.putObject(bucket, key, fileContents);
+  }
+
+  public static void deleteObject(String bucket, String key) {
+    try {
+      s3.deleteObject(bucket, key);
+    } catch (AmazonServiceException e) {
+      log.warn("Could not delete the object {}/{}", bucket, key);
+    }
+  }
+
+  public static void deleteBucket(String bucket) {
+    try {
+      s3.deleteBucket(bucket);
+    } catch (AmazonServiceException e) {
+      log.warn("Could not delete the bucket {}", bucket);
+    }
   }
 
   public static String getS3FileAsString(S3Object s3Object) throws IOException {
