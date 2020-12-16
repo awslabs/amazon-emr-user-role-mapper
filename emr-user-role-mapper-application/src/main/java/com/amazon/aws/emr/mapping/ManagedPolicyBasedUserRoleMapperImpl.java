@@ -62,7 +62,6 @@ public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImpl
     Optional<List<String>> groups = principalResolver.getGroups(username);
     if (groups.isPresent()) {
       principals.addAll(groups.get());
-      log.debug("***** Groups" + groups.get() + " " + principalRoleMapping);
     }
 
     principals.stream()

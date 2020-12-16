@@ -109,6 +109,7 @@ public class DefaultUserRoleMapperImpl extends S3BasedUserMappingImplBase
         // Clear the old mapping now since we found a new valid mapping!
         userRoleMapping.clear();
         groupRoleMapping.clear();
+
         for (PrincipalRoleMapping principalRoleMapping : principalRoleMappings.getPrincipalRoleMappings()) {
             if (principalRoleMapping == null) {
                 log.info("Invalid record!");
