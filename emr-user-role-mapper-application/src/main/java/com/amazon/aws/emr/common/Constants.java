@@ -78,7 +78,7 @@ final public class Constants {
     public static final String PRINCIPAL_RESOLVER_STRATEGY_KEY = "principal.resolver.strategy";
 
     // Default Principal resolver implementation using native system calls
-    public static final String DEFAULT_PRINCIPAL_RESOLVER_STRATEGY = "native";
+    public static final String DEFAULT_PRINCIPAL_RESOLVER_STRATEGY = "command";
 
     public static final String IMPERSONATION_ALLOWED_USERS = "rolemapper.impersonation.allowed.users";
 

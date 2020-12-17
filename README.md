@@ -79,6 +79,45 @@ sudo -u mapped-user aws s3 ls s3://my-custom-mapper/install
 2020-09-11 19:07:41        254 user-role-mapper.properties
 ```
 
+### Integration tests
+- Set the AWS credentials to be available to the environment before running the tests.
+- Like here is one way to do it
+
+```
+export AWS_ACCESS_KEY_ID="ASIASSFAZTPATNBHFC56"
+export AWS_SECRET_ACCESS_KEY="XXXXXXXXX"
+export AWS_SESSION_TOKEN="YYYYYYYYY"
+```
+- To just run unit tests run `mvn test`
+
+### Managed policy union mapper
+- The default mapper allows the mapping to specify different AWS Role, policies etc.
+- The managed policy mapper uses a single AWS Role (specified in config), and the mappings
+just contain a list of Managed Policies.
+- The actual permissions are the union of Managed Policies provided they are allowed by the AWS Role.
+- Changes in user-role-mapper.properties
+
+```
+rolemapper.class.name=com.amazon.aws.emr.mapping.ManagedPolicyBasedUserRoleMapperImpl
+rolemapper.role.arn=arn:aws:iam::<ACC_ID>:role/<BASE_ROLE>
+```
+- Format of JSON file
+
+```
+{
+"PrincipalPolicyMappings": [
+  {
+    "username": "test-user1",
+    "policies": ["arn:aws:iam::176430881729:policy/test-sk-p1"]
+  },
+  {
+    "username": "test-gp1",
+    "policies": ["arn:aws:iam::176430881729:policy/test-sk-p2"]
+  }
+]
+}
+```
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
