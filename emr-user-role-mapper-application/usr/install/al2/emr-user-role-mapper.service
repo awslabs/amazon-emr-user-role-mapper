@@ -4,10 +4,10 @@ After=libinstance-controller-java.service
 
 [Service]
 Type=forking
-ExecStart=/etc/init.d/emr-user-role-mapper start
-ExecStop=/etc/init.d/emr-user-role-mapper stop
+ExecStart=/usr/bin/emr-user-role-mapper
+ExecStop=/usr/bin/emr-user-role-mapper stop
 Restart=always
-PIDFile=/var/run/emr-user-role-mapper/emr-user-role-mapper.pid
+PIDFile=/emr/user-role-mapper/run/emr-user-role-mapper.pid
 
 [Install]
 WantedBy=multi-user.target
