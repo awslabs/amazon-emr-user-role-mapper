@@ -88,13 +88,18 @@ export AWS_ACCESS_KEY_ID="ASIASSFAZTPATNBHFC56"
 export AWS_SECRET_ACCESS_KEY="XXXXXXXXX"
 export AWS_SESSION_TOKEN="YYYYYYYYY"
 ```
+- The tests run only on OSX and Unix style OS. They skip on other OS.
+- The invoking OS user is used in the tests.
+- The tests create/fetch IAM Roles, Policies, S3 buckets. The caller credentials should have
+permissions to perform these operations.
+- The tests run in lexicographic order, and should be run in a single thread.
 - To just run unit tests run `mvn test`
 
 ### Managed policy union mapper
-- The default mapper allows the mapping to specify different AWS Role, policies etc.
-- The managed policy mapper uses a single AWS Role (specified in config), and the mappings
+- The default mapper allows the mapping to specify different IAM Role, policies etc.
+- The managed policy mapper uses a single IAM Role (specified in config), and the mappings
 just contain a list of Managed Policies.
-- The actual permissions are the union of Managed Policies provided they are allowed by the AWS Role.
+- The actual permissions are the union of Managed Policies provided they are allowed by the IAM Role.
 - Changes in user-role-mapper.properties
 
 ```
@@ -108,11 +113,11 @@ rolemapper.role.arn=arn:aws:iam::<ACC_ID>:role/<BASE_ROLE>
 "PrincipalPolicyMappings": [
   {
     "username": "test-user1",
-    "policies": ["arn:aws:iam::176430881729:policy/test-sk-p1"]
+    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
   },
   {
     "username": "test-gp1",
-    "policies": ["arn:aws:iam::176430881729:policy/test-sk-p2"]
+    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_Y>"]
   }
 ]
 }
