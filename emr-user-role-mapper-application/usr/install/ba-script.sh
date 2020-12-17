@@ -27,6 +27,14 @@ USER_ROLE_MAPPER_PORT=9944
 WHITELIST_EC2_MD_IPTABLE_RULE_COMMENT="(added by userrolemapper) whitelist ec2 metadata service for user:"
 BLACKLIST_EC2_MD_IPTABLE_RULE_COMMENT="(added by userrolemapper) redirect ec2 metadata requests of LF users to interceptor"
 
+if pgrep -f instance-controller >/dev/null ; then
+  echo "Configuring URM on EMR Cluster"
+  sudo_user="hadoop"
+else
+  echo "Configuring URM on Vanilla EC2 Host"
+  sudo_user="ec2-user"
+fi
+
 # remove all rules that match the pattern
 # this function will search for a rule that matches the given pattern and delete it, then repeat this until no more rules are found
 function remove_matching_rules() {
@@ -156,8 +164,9 @@ function setup_iptable_rules() {
     # grant root user the access to EC2 metadata
     insert_iptable_rule_to_whitelist_privileged_user root
 
-    # whitelist hadoop user as IC is run by hadoop, IC constructor needs to call EC2 metadata
-    insert_iptable_rule_to_whitelist_privileged_user hadoop
+    # whitelist sudo user (ec2-user/hadoop) to access EC2 metadata
+    # For EMR Cluster, IC is run by sudo user hadoop, IC constructor needs to call EC2 metadata
+    insert_iptable_rule_to_whitelist_privileged_user $sudo_user
 
     # whitelist emrsecretagent as secret agent is the proxy to EC2 metadata service
     insert_iptable_rule_to_whitelist_privileged_user userrolemapper
@@ -171,7 +180,7 @@ sudo mkdir -p /var/run/emr-user-role-mapper/
 sudo mkdir -p /usr/share/aws/emr/user-role-mapper/lib
 sudo mkdir -p /usr/share/aws/emr/user-role-mapper/conf
 sudo mkdir -p /emr/user-role-mapper/log/
-sudo chown -R userrolemapper:hadoop /emr/user-role-mapper
+sudo chown -R userrolemapper:$sudo_user /emr/user-role-mapper
 
 
 echo "Getting artifacts from S3"
