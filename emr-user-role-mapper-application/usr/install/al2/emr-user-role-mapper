@@ -17,31 +17,34 @@
 # permissions and limitations under the License.
 #
 
-### BEGIN INIT INFO
-# Provides:          emr-user-role-mapper
-# Required-Start:    $remote_fs $syslog $network
-# Required-Stop:     $remote_fs $syslog
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# chkconfig will override the values set by LSB init script
-# chkconfig:         2345 99 01
-# Short-Description: URM
-# Description:       EMR process for mapping users to AWS IAM Roles.
-### END INIT INFO
-
-. /lib/lsb/init-functions
-
 set -e -x
 
-PID_FILE=/emr/userrolemapper/run/userrolemapper.pid
+LOG_FILE=/emr/user-role-mapper/log/emr-user-role-mapper.out
+PID_FILE=/emr/user-role-mapper/run/emr-user-role-mapper.pid
 
 function start {
-    echo "(console) $(date '+%Y-%m-%d %H:%M:%S') EMR UserRoleMapper start called!" > /dev/console
+    set -x
 
-    mkdir -p /emr/user-role-mapper/{run,log,local,data}
-    chown -R userrolemapper.hadoop /emr/user-role-mapper
+    EMR_USER_ROLE_MAPPER_HOME="/usr/share/aws/emr/user-role-mapper"
+    CLASSPATH="${EMR_USER_ROLE_MAPPER_HOME}/lib/*:/emr/user-role-mapper/conf/:"
+    GC_OPTIONS="-XX:+UseGCOverheadLimit -XX:+HeapDumpOnOutOfMemoryError -XX:OnOutOfMemoryError=\"kill -9 %p\" \
+                        -XX:ReservedCodeCacheSize=150M -XX:+PrintCommandLineFlags -XX:+PrintGCDetails \
+                        -XX:+PrintGCDetails -XX:+PrintTenuringDistribution -XX:-UseAdaptiveSizePolicy -XX:MaxTenuringThreshold=15 \
+                        -Xloggc:/tmp/emr-user-role-mapper-garbage-collection.log -XX:+PrintFlagsFinal -XX:+UseGCLogFileRotation \
+                        -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=128M"
 
-    /sbin/start-stop-daemon --start  --pidfile $PID_FILE  --verbose --exec /usr/bin/userrolemapper
+    sudo echo "(console) $(date '+%Y-%m-%d %H:%M:%S') EMR UserRoleMapper start called!" > /dev/console
+
+    LAUNCH_CMD='/usr/bin/java -Xms200m -Xmx1024m '$GC_OPTIONS' -cp '$CLASSPATH' \
+        com.amazon.aws.emr.UserRoleMappingServer >> '$LOG_FILE' 2>&1 &'
+
+    sudo -u userrolemapper -H sh -c "$LAUNCH_CMD"
+
+    userrolemapper_pid=$(ps -eo uname:20,pid,cmd | grep "userrolemapper.*[/]usr/bin/java.*emr.UserRoleMappingServer" | awk '{print $2}')
+    echo "EMR User Role Mapper process id is $userrolemapper_pid"
+
+    sudo echo $userrolemapper_pid > $PID_FILE
+
     sleep 5
 
     echo "(console) $(date '+%Y-%m-%d %H:%M:%S') Listing currently running userrolemapper: " > /dev/console
@@ -50,35 +53,46 @@ function start {
 
 function stop {
     echo "(console) $(date '+%Y-%m-%d %H:%M:%S') EMR UserRoleMapper stop called!" > /dev/console
-    /sbin/start-stop-daemon --stop --pidfile $PID_FILE --verbose
+
+    if [[ -f $PID_FILE ]]; then
+        userrolemapper_pid=$(cat $PID_FILE)
+        kill -9 $userrolemapper_pid
+        sudo rm $PID_FILE
+    else
+        echo "User Role Mapper PID file does not exist. "
+    fi
 }
 
 function status {
     if [ -e $PID_FILE ] && ps --pid $(cat $PID_FILE) > /dev/null 2>&1 ; then
-        log_warning_msg "Running"
+        echo "EMR User Role Mapper: Running"
         exit 0
     else
-        log_warning_msg "Not Running"
+        echo "EMR User Role Mapper: Not Running"
         exit 3
     fi
 }
 
-case $1 in
-    'start' )
-        start
-        ;;
-    'stop' )
-        stop
-        ;;
-    'restart' )
-        stop
-        start
-        ;;
-    'status' )
-        status
-        ;;
-    *)
-     echo "usage: `basename $0` {start|stop|status}"
-esac
+if [[ $# -eq 0 ]]; then
+    start
+else
+    case $1 in
+        'start' )
+            start
+            ;;
+        'stop' )
+            stop
+            ;;
+        'restart' )
+            stop
+            start
+            ;;
+        'status' )
+            status
+            ;;
+        *)
+         echo "usage: `basename $0` {start|stop|status}"
+    esac
+fi
 
 exit 0

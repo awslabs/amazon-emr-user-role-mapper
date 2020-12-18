@@ -172,41 +172,35 @@ function setup_iptable_rules() {
     insert_iptable_rule_to_whitelist_privileged_user userrolemapper
 }
 
-
-
 echo "Creating user and dirs"
 sudo useradd userrolemapper
 sudo mkdir -p /var/run/emr-user-role-mapper/
 sudo mkdir -p /usr/share/aws/emr/user-role-mapper/lib
-sudo mkdir -p /usr/share/aws/emr/user-role-mapper/conf
-sudo mkdir -p /emr/user-role-mapper/log/
-sudo chown -R userrolemapper:$sudo_user /emr/user-role-mapper
-
+mkdir -p /emr/user-role-mapper/{run,log,conf}
 
 echo "Getting artifacts from S3"
-
-
 echo "Getting log4j.properties from S3"
-sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/log4j.properties /usr/share/aws/emr/user-role-mapper/conf
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/log4j.properties /emr/user-role-mapper/conf/
 echo "Getting user-role-mapper.properties from S3"
-sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/user-role-mapper.properties /usr/share/aws/emr/user-role-mapper/conf
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/user-role-mapper.properties /emr/user-role-mapper/conf/
 echo "Getting and setting mappings.json"
-sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/mappings.json /usr/share/aws/emr/user-role-mapper/conf
-sudo sed -i "s#\$AWS_ROLE#${ROLE_ARN}#g" /usr/share/aws/emr/user-role-mapper/conf/mappings.json
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/mappings.json /emr/user-role-mapper/conf/
+sudo sed -i "s#\$AWS_ROLE#${ROLE_ARN}#g" /emr/user-role-mapper/conf/mappings.json
 echo "Getting emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar from S3"
 sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar /usr/share/aws/emr/user-role-mapper/lib/
+
+echo "Setting permissions"
+sudo chown -R userrolemapper:$sudo_user /emr/user-role-mapper
+sudo chmod -R 750 /emr/user-role-mapper/conf/*
 
 # Check if we are on AL2
 which systemctl 2>/dev/null
 if [[ $? -eq 0 ]]; then
     echo "Getting emr-user-role-mapper.service from S3"
     sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/emr-user-role-mapper.service /etc/systemd/system/
-    echo "Copying Init.d files"
-    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/emr-user-role-mapper /etc/init.d/
-    sudo chmod 750 /etc/init.d/emr-user-role-mapper
-    echo "Copying startup scripts"
-    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/userrolemapper /usr/bin/
-    sudo chmod 750 /usr/bin/userrolemapper
+    sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/al2/emr-user-role-mapper /usr/bin/
+    sudo chmod 750 /usr/bin/emr-user-role-mapper
+    sudo chown userrolemapper:$sudo_user /usr/bin/emr-user-role-mapper
     echo "Reload config"
     sudo systemctl enable emr-user-role-mapper.service
     echo "Start the service"

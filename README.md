@@ -12,6 +12,7 @@ mvn clean install
 
 ## Installation
 
+#### Package and copy artifacts to S3
 ```
 cd emr-user-role-mapper-application/usr
 cp ../target/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar install/
@@ -43,6 +44,8 @@ Here is a sample format of the JSON.
 }
 ```
 
+#### Installing EMR User Role Mapper on EMR
+
 Set shell variables for S3 Bucket and folder within that bucket where the install artifacts would be copied. Like -
 ```
 export BUCKET=…
@@ -50,13 +53,42 @@ export S3FOLDER=…
 aws s3 cp --recursive install s3://$BUCKET/$S3FOLDER
 ```
 
-Launch the EMR cluster. It’s strongly recommended to use an EMR configuration that enables Kerberos on the cluster. 
+If launching on an EMR cluster, it’s strongly recommended to use an EMR configuration that enables Kerberos on the cluster. 
 
 ```
 aws emr create-cluster --release-label emr-5.29.0 --instance-type m3.xlarge --applications Name=Hive Name=Zeppelin Name=Livy --instance-count 2 --ec2-attributes InstanceProfile=EMR_EC2_DefaultRole,KeyName=shkala-dev-iad --service-role EMR_DefaultRole   --name "URM cluster"   --kerberos-attributes Realm=EC2.INTERNAL,KdcAdminPassword=<>  --region us-east-1 --bootstrap-actions Name='Install URM',Path=s3://$BUCKET/$S3FOLDER/ba-script.sh,Args=[$BUCKET,$S3FOLDER] --security-configuration <>
 ```
 
+#### Launching on an EC2 instance
+
+You can provide the following into the user data of the instance, or run them on the instance manually:
+
+```
+#!/bin/bash
+export BUCKET=<ENTER BUCKET HERE>
+export S3FOLDER=<ENTER FOLDER HERE>
+sudo yum install -y java-1.8.0-openjdk
+aws s3 cp s3://$BUCKET/$S3FOLDER/ba-script.sh /tmp/
+chmod +x /tmp/ba-script.sh
+/tmp/ba-script.sh $BUCKET $S3FOLDER
+```
+
 ssh to the cluster and verify URM is running
+
+#### Validating the Installation
+
+If launching on EMR release 5.29 or later, or EC2 running Amazon Linux 2, run:
+
+```
+[hadoop@ip-172-31-35-38 ~]$ sudo systemctl status emr-user-role-mapper
+● emr-user-role-mapper.service - EMR process to map users to AWS IAM Roles.
+   Loaded: loaded (/etc/systemd/system/emr-user-role-mapper.service; enabled; vendor preset: disabled)
+   Active: active (running) since Thu 2020-12-17 19:09:50 UTC; 6min ago
+  Process: 7284 ExecStart=/usr/bin/emr-user-role-mapper (code=exited, status=0/SUCCESS)
+ Main PID: 7293 (java)
+```
+
+If launching on EMR release 5.28 or earlier (EC2 using Amazon Linux 1 is not supported) run:
 
 ```
 sudo initctl status emr-user-role-mapper
