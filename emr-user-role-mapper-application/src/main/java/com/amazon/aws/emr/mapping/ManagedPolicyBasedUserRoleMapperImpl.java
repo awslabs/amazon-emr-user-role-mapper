@@ -55,6 +55,8 @@ public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImpl
 
   @Override
   public Optional<AssumeRoleRequest> getMapping(String username) {
+    log.debug("Got request to map user {}", username);
+
     List<String> principals = new ArrayList<>();
     List<PolicyDescriptorType> policyDescriptorTypes = new ArrayList<>();
 
@@ -64,15 +66,20 @@ public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImpl
       principals.addAll(groups.get());
     }
 
+    log.debug("Groups user belongs to is {}", groups.orElse(Collections.EMPTY_LIST));
+
     principals.stream()
         .map(principal -> principalRoleMapping.getOrDefault(principal, Collections.emptyList()))
         .filter(policies -> !policies.isEmpty())
         .flatMap(List::stream)
         .distinct()
         .forEach(policyDescriptorTypes::add);
+
     if (policyDescriptorTypes.isEmpty()) {
       return Optional.empty();
     }
+
+    log.debug("Policies mapped for user: {}", policyDescriptorTypes);
 
     AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
         .withRoleArn(roleArn)
