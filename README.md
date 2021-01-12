@@ -133,6 +133,7 @@ permissions to perform these operations.
 just contain a list of Managed Policies.
 - The actual permissions are the union of Managed Policies provided they are allowed by the IAM Role.
 - Changes in user-role-mapper.properties
+- Note: IAM imposes a limit of up to 10 policies that can be attached to an IAM role. Mappings should not exceed this limit for a single user, otherwise URM will fail to assume a role for the user.
 
 ```
 rolemapper.class.name=com.amazon.aws.emr.mapping.ManagedPolicyBasedUserRoleMapperImpl
@@ -154,6 +155,12 @@ rolemapper.role.arn=arn:aws:iam::<ACC_ID>:role/<BASE_ROLE>
 ]
 }
 ```
+
+### URM Custom Credentials provider
+
+URM works by looking at who is the owner of socket connection of calling user and granting credentials for the user. In some cases, this authentication may not be sufficent as execution engines may execute user queries as the engines user. For example, the Hive user can execute queries as others. For this scenario, using the EMR User Role Mapper Credentials provider may be able to support these use cases as the provider will see who the impersonated user is, and get credentials for that particular user. 
+
+To get more information, including installation instructions, see URM Credentials Provider [README](emr-user-role-mapper-credentials-provider/README.md) for more information.
 
 ## Security
 
