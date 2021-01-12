@@ -42,7 +42,7 @@ public class URMCredentialsProvider
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 DEFAULT_ALLOWED_USERS,
                 getUgi().getShortUserName(),
-                getUgi().getRealUser().getShortUserName()
+                getRealUser()
                 );
     }
 
@@ -56,7 +56,7 @@ public class URMCredentialsProvider
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 getUsersAllowedToImpersonate(configuration),
                 getUgi().getShortUserName(),
-                getUgi().getRealUser().getShortUserName());
+                getRealUser());
     }
 
     /**
@@ -74,8 +74,8 @@ public class URMCredentialsProvider
         LOG.debug("Building URMCredentials Provider.");
         this.urmCredentialsFetcher = urmCredentialsFetcher;
         this.usersAllowedToImpersonate = usersAllowedToImpersonate;
-        this.createdBy = realUser;
         this.createdForUser = createdForUser;
+        this.createdBy = realUser;
     }
 
     /**
@@ -98,8 +98,8 @@ public class URMCredentialsProvider
             LOG.debug("I am impersonating user: " + createdForUser);
         }
         String callingUser = getUgi().getShortUserName();
-        //Put in a safety check here to make sure that this object is created and used. This is to ensure that
-        //credentials leak doesn't happen.
+        // Put in a safety check here to make sure that this object is created and used by the same user.
+        // This is to ensure that credentials leak cannot happen.
         if (!callingUser.equalsIgnoreCase(createdForUser) && usersAllowedToImpersonate.contains(callingUser)) {
             final String errmsg = "Current user is different than calling user! CallingUser: " + callingUser + " CurrentUser: " + createdForUser;
             LOG.error(errmsg);
@@ -140,5 +140,16 @@ public class URMCredentialsProvider
         catch (IOException e) {
             throw new RuntimeException("Failed to get UGI of the current user.", e);
         }
+    }
+
+    @VisibleForTesting
+    static String getRealUser() {
+        UserGroupInformation ugi = getUgi();
+        if (ugi.getRealUser() != null) {
+            return ugi.getRealUser().getShortUserName();
+        }
+        //If UGI getRealUser returns null, fall back to system property.
+        LOG.debug("Failed to get RealUser from UGI. Defaulting to System Property");
+        return System.getProperty("user.name");
     }
 }

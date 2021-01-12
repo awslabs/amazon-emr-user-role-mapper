@@ -89,4 +89,19 @@ public class URMCredentialsProviderTest
         assertTrue(users.contains("user1"));
         assertTrue(users.contains("user2"));
     }
+
+    @Test
+    public void test_ugiReturnNull() throws IOException
+    {
+        UserGroupInformation mockUgi = mock(UserGroupInformation.class);
+        when(mockUgi.getRealUser()).thenReturn(null);
+
+        PowerMockito.mockStatic(UserGroupInformation.class);
+        BDDMockito.given(UserGroupInformation.getCurrentUser()).willReturn(mockUgi);
+
+        String realUser = URMCredentialsProvider.getRealUser();
+
+        assertNotNull(realUser);
+        assertEquals(System.getProperty("user.name"), realUser);
+    }
 }
