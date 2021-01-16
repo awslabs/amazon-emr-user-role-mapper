@@ -92,11 +92,11 @@ For example:
     "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
   }
 }
+```
 
 where POLICY_X is a policy that has access to Glue Data Catalog and s3:ListBucket for any s3 buckets that you wish Presto to access.
 
-#### Note: As of PrestoDB 0.232, it does not perform the necessary impersonation in rare cases which is why s3:ListBucket permissions is needed. 
-```
+Note: As of PrestoDB 0.232, it does not perform the necessary impersonation in rare cases which is why s3:ListBucket permissions is needed. 
 
 ### Using Hive Metastore
 
@@ -111,8 +111,9 @@ Presto does not support impersonation when interacting with Hive Metastore. For 
   }
 }
 
-where POLICY_X is a policy that has access to Glue Data Catalog and s3:ListBucket for any s3 buckets that you wish Presto to access.
 ```
+
+where POLICY_X is a policy that has access to Glue Data Catalog and s3:ListBucket for any s3 buckets that you wish Presto to access.
 
 Also, if you are using StorageBasedAuthorizer as the authorization layer for Hive Metastore, you will need to provide S3 privileges to the presto user as well. This is so that the authorizer can access S3 during it's authorization checks.
 
