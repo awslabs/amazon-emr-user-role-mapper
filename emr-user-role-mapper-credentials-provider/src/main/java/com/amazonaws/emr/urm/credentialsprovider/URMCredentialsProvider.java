@@ -29,7 +29,6 @@ public class URMCredentialsProvider
     private final Set<String> usersAllowedToImpersonate;
 
     private final String createdBy;
-    private final String createdForUser;
 
     final private URMCredentialsFetcher urmCredentialsFetcher;
 
@@ -41,7 +40,6 @@ public class URMCredentialsProvider
     {
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 DEFAULT_ALLOWED_USERS,
-                getUgi().getShortUserName(),
                 getRealUser()
                 );
     }
@@ -55,7 +53,6 @@ public class URMCredentialsProvider
     {
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 getUsersAllowedToImpersonate(configuration),
-                getUgi().getShortUserName(),
                 getRealUser());
     }
 
@@ -63,10 +60,11 @@ public class URMCredentialsProvider
      * This constructor takes all members as an argument for testing purposes.
      * @param urmCredentialsFetcher
      * @param usersAllowedToImpersonate
+     * @param realUser
      */
     @VisibleForTesting
     URMCredentialsProvider(URMCredentialsFetcher urmCredentialsFetcher, Set<String> usersAllowedToImpersonate,
-            String createdForUser, String realUser)
+            String realUser)
     {
         Preconditions.checkNotNull(urmCredentialsFetcher);
         Preconditions.checkNotNull(usersAllowedToImpersonate);
@@ -74,7 +72,6 @@ public class URMCredentialsProvider
         LOG.debug("Building URMCredentials Provider.");
         this.urmCredentialsFetcher = urmCredentialsFetcher;
         this.usersAllowedToImpersonate = usersAllowedToImpersonate;
-        this.createdForUser = createdForUser;
         this.createdBy = realUser;
     }
 
@@ -86,6 +83,7 @@ public class URMCredentialsProvider
     @Override
     public AWSCredentials getCredentials()
     {
+        //Check to make sure I am allowed to impersonate.
         if (!usersAllowedToImpersonate.contains(createdBy)) {
             //not going to use impersonation for this.
             if (LOG.isDebugEnabled()) {
@@ -94,18 +92,20 @@ public class URMCredentialsProvider
             //Return null which will then let the existing credentials provider chain to get credentials
             return null;
         }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("I am impersonating user: " + createdForUser);
-        }
+
         String callingUser = getUgi().getShortUserName();
-        // Put in a safety check here to make sure that this object is created and used by the same user.
-        // This is to ensure that credentials leak cannot happen.
-        if (!callingUser.equalsIgnoreCase(createdForUser) && usersAllowedToImpersonate.contains(callingUser)) {
-            final String errmsg = "Current user is different than calling user! CallingUser: " + callingUser + " CurrentUser: " + createdForUser;
-            LOG.error(errmsg);
-            throw new RuntimeException(errmsg);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("I am impersonating user: " + callingUser);
         }
-        return urmCredentialsFetcher.getCredentials();
+
+        try {
+            urmCredentialsFetcher.setImpersonationUser(callingUser);
+            return urmCredentialsFetcher.getCredentials();
+        } catch (Exception e) {
+            LOG.error("Failed to get credentials for user: " + callingUser + " from URM", e);
+            throw e;
+        }
     }
 
     @Override
