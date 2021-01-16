@@ -86,11 +86,12 @@ For example:
 
 ```json
 {
-"PrincipalPolicyMappings": [
-  {
-    "username": "presto",
-    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
-  }
+    "PrincipalPolicyMappings": [
+      {
+        "username": "presto",
+        "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
+      }
+    ]
 }
 ```
 
@@ -104,13 +105,13 @@ Presto does not support impersonation when interacting with Hive Metastore. For 
 
 ```json
 {
-"PrincipalPolicyMappings": [
-  {
-    "username": "hive",
-    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
-  }
+    "PrincipalPolicyMappings": [
+      {
+        "username": "hive",
+        "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
+      }
+    ]
 }
-
 ```
 
 where POLICY_X is a policy that has access to Glue Data Catalog and s3:ListBucket for any s3 buckets that you wish Presto to access.
