@@ -128,37 +128,57 @@ permissions to perform these operations.
 - To just run unit tests run `mvn test`
 
 ### Managed policy union mapper
-- The default mapper allows the mapping to specify different IAM Role, policies etc.
-- The managed policy mapper uses a single IAM Role (specified in config), and the mappings
-just contain a list of Managed Policies.
-- The actual permissions are the union of Managed Policies provided they are allowed by the IAM Role.
-- Changes in user-role-mapper.properties
-- Note: IAM imposes a limit of up to 10 policies that can be attached to an IAM role. Mappings should not exceed this limit for a single user, otherwise URM will fail to assume a role for the user.
+The default mapper allows the mapping to specify different IAM Role, policies etc. However, this can be limiting as a user may match multiple policies. This role mapping implementation allows for matching IAM policies instead of IAM roles. When the list of policies are identified for a user based on the user’s name and groups, it uses those policies to scope down the role specified in the property 'rolemapper.role.arn' in the user-role-mapper.properties. 
+
+For more information on assume-role and scoping down credentials, see [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html), specifically the PolicyArns section and the Session Polices at [Access Policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html).
+
+To use this mapper implementation, follow these two steps:
+
+* Step 1: Changed in user-role-mapper.properties to use the ManagedPolicyBasedUserRoleMapperImpl implementation and specify the base role to assume:
 
 ```
 rolemapper.class.name=com.amazon.aws.emr.mapping.ManagedPolicyBasedUserRoleMapperImpl
 rolemapper.role.arn=arn:aws:iam::<ACC_ID>:role/<BASE_ROLE>
 ```
-- Format of JSON file
+
+
+**Note 1:** The IAM Role that is specified needs to have permissions to all the actions and resources that are contained in all of the policies. If the role doesn't have permissions that is contained in a policy, then the policy will NOT give the role permissions. For example, if your role doesn't have permissions to access s3://mybucket/myprefix/ and there is a policy that provides s3:GetObject permissions to s3://mybucket/myprefix/*, access to any objects in the prefix will fail with access denied.
+
+**Note 2:** IAM imposes a limit of up to 10 policies that can be attached to an IAM role. Mappings should not exceed this limit for a single user, otherwise URM will fail to assume a role for the user.
+
+
+* Step 2: Add your mappings to mapping.json file
 
 ```
 {
 "PrincipalPolicyMappings": [
   {
-    "username": "test-user1",
+    "username": "user1",
     "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_X>"]
   },
   {
-    "username": "test-gp1",
+    "username": "user2",
+    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_W>"]
+  },
+  {
+    "groupname": "group1",
     "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_Y>"]
+  },
+  {
+    "groupname": "group2",
+    "policies": ["arn:aws:iam::<ACC-ID>:policy/<POLICY_Z>"]
   }
 ]
 }
 ```
 
+#### Example: 
+
+Suppose that user *user1* belongs to the *group1* group. When [assume-role](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) is called to assume the role specified in 'rolemapper.role.arn', it will pass the policy ARN's for policies <POLICY_X> and <POLICY_Y>, granting the user permissions provided by <POLICY_X> and <POLICY_Y>.
+
 ### URM Custom Credentials provider
 
-URM works by looking at who is the owner of socket connection of calling user and granting credentials for the user. In some cases, this authentication may not be sufficent as execution engines may execute user queries as the engines user. For example, the Hive user can execute queries as others. For this scenario, using the EMR User Role Mapper Credentials provider may be able to support these use cases as the provider will see who the impersonated user is, and get credentials for that particular user. 
+URM works by looking at who is the owner of socket connection of calling user and granting credentials for the user. In some cases, this authentication may not be sufficent as execution engines may execute user queries as the engines user. For example, the Hive user can execute queries as others. For this scenario, using the EMR User Role Mapper Credentials provider may be able to support these use cases as the provider will see who the impersonated user is, and get credentials for that particular user. The URM credentials provide depends on the use of [UserGroupInformation](https://hadoop.apache.org/docs/r1.2.1/Secure_Impersonation.html) from the Hadoop ecosystem and is required by the execution engine.  
 
 To get more information, including installation instructions, see URM Credentials Provider [README](emr-user-role-mapper-credentials-provider/README.md) for more information.
 
