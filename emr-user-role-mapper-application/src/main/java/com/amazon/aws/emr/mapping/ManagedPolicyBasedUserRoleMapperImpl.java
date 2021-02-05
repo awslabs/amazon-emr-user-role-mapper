@@ -7,6 +7,7 @@ import com.amazon.aws.emr.model.PrincipalPolicyMappings;
 import com.amazon.aws.emr.rolemapper.UserRoleMapperProvider;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.amazonaws.services.securitytoken.model.PolicyDescriptorType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,8 +29,12 @@ import lombok.extern.slf4j.Slf4j;
 public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImplBase
     implements UserRoleMapperProvider {
 
+  @VisibleForTesting
+  static String DEFAULT_NO_MATCH_POLICY_ARN = "arn:aws:iam::aws:policy/AWSDenyAll";
+
   private PrincipalResolver principalResolver;
   private String roleArn;
+  private String noMatchPolicyArn = DEFAULT_NO_MATCH_POLICY_ARN;
 
   private final Map<String, List<PolicyDescriptorType>> principalRoleMapping = new HashMap<>();
 
@@ -76,7 +81,12 @@ public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImpl
         .forEach(policyDescriptorTypes::add);
 
     if (policyDescriptorTypes.isEmpty()) {
-      return Optional.empty();
+      if (noMatchPolicyArn != null && noMatchPolicyArn.length() > 0) {
+        log.debug("Found no mappings for this user. Returning credentials with default policy arn");
+        policyDescriptorTypes.add(new PolicyDescriptorType().withArn(noMatchPolicyArn));
+      } else {
+        return Optional.empty();
+      }
     }
 
     log.debug("Policies mapped for user: {}", policyDescriptorTypes);
@@ -95,6 +105,12 @@ public class ManagedPolicyBasedUserRoleMapperImpl extends S3BasedUserMappingImpl
         .fromJson(jsonString, PrincipalPolicyMappings.class);
     // Clear the old mapping now since we found a new valid mapping!
     principalRoleMapping.clear();
+    noMatchPolicyArn = DEFAULT_NO_MATCH_POLICY_ARN;
+
+    if (principalPolicyMappings.getNoMatchPolicyArn() != null) {
+      noMatchPolicyArn = principalPolicyMappings.getNoMatchPolicyArn();
+    }
+    log.info("No-Match Policy ARN is : " + noMatchPolicyArn);
 
     for (PrincipalPolicyMapping principalPolicyMapping : principalPolicyMappings
         .getPrincipalPolicyMappings()) {

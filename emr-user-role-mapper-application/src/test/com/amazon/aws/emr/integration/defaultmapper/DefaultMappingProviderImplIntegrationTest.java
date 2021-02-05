@@ -133,6 +133,8 @@ public class DefaultMappingProviderImplIntegrationTest extends IntegrationTestBa
     if (testRoleArn != null) {
       IAMUtils.deleteRole(testRoleName);
     }
+    //Give time for IAM to delete the role before the policy can be deleted.
+    Thread.sleep(2 * 1000);
     if (testPolicyArn != null) {
       IAMUtils.deletePolicy(testPolicyArn);
     }
