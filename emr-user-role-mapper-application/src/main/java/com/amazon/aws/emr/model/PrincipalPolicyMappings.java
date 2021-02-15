@@ -8,6 +8,9 @@ import lombok.Data;
 
 @Data
 public class PrincipalPolicyMappings {
+    @SerializedName("NoMatchPolicyArn")
+    String noMatchPolicyArn;
+
     @SerializedName("PrincipalPolicyMappings")
     PrincipalPolicyMapping[] principalPolicyMappings;
 }

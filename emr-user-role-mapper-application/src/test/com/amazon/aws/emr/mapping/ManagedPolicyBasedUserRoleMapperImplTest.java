@@ -3,6 +3,7 @@ package com.amazon.aws.emr.mapping;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -39,7 +40,9 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
   private static final String TEST_BUCKET = "testBucket";
   private static final String TEST_KEY = "testKey";
   private static final String MAPPING_ROLE_ARN = "arn:aws:s3:::MappingRole";
+  private static final String NO_MATCH_POLICY_ARN = "arn:aws:iam::aws:policy/testArn";
   private static final String mappingJson = "{\n" +
+      "  \"NoMatchPolicyArn\":\"" + NO_MATCH_POLICY_ARN + "\"," +
       "  \"PrincipalPolicyMappings\": [\n" +
       "    {\n" +
       "      \"username\": \"u1\",\n" +
@@ -126,7 +129,47 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
     when(principalResolver.getGroups(eq("u2"))).thenReturn(Optional.of(Collections.emptyList()));
     Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
         .getMapping("u2");
-    assertThat(optionalAssumeRoleRequest.isPresent(), is(false));
+    assertThat(optionalAssumeRoleRequest.isPresent(), is( true));
+    assertThat(optionalAssumeRoleRequest.get().getPolicyArns().get(0)
+            .getArn().equals(NO_MATCH_POLICY_ARN), is(true));
+  }
+
+  @Test
+  public void policy_config_with_no_default_policy() {
+      String policy = "{\n" +
+            "  \"PrincipalPolicyMappings\": [\n" +
+            "    {\n" +
+            "      \"username\": \"u1\",\n" +
+            "      \"policies\": [\n" +
+            "        \"arn:aws:s3:::UserPolicy\"\n" +
+            "      ]\n" +
+            "    }]\n" +
+            "}";
+
+    managedPolicyBasedUserRoleMapper.processFile(policy);
+    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
+            .getMapping("u2");
+    assertThat(optionalAssumeRoleRequest.isPresent(), is( true));
+    assertEquals(optionalAssumeRoleRequest.get().getPolicyArns().get(0)
+            .getArn(), ManagedPolicyBasedUserRoleMapperImpl.DEFAULT_NO_MATCH_POLICY_ARN);
+  }
+
+  @Test
+  public void policy_config_with_blank_default_policy() {
+    String policy = "{\n" +
+            "  \"NoMatchPolicyArn\":\"\"," +
+            "  \"PrincipalPolicyMappings\": [\n" +
+            "    {\n" +
+            "      \"username\": \"u1\",\n" +
+            "      \"policies\": [\n" +
+            "        \"arn:aws:s3:::UserPolicy\"\n" +
+            "      ]\n" +
+            "    }]\n" +
+            "}";
+    managedPolicyBasedUserRoleMapper.processFile(policy);
+    Optional<AssumeRoleRequest> optionalAssumeRoleRequest = managedPolicyBasedUserRoleMapper
+            .getMapping("u2");
+    assertThat(optionalAssumeRoleRequest.isPresent(), is( false));
   }
 
   @Test
@@ -143,4 +186,5 @@ public class ManagedPolicyBasedUserRoleMapperImplTest {
     assertThat(assumeRoleRequest.getPolicyArns().get(1).getArn(), is("arn:aws:s3:::Group1-P2"));
     assertThat(assumeRoleRequest.getPolicyArns().get(2).getArn(), is("arn:aws:s3:::Group-Common"));
   }
+
 }

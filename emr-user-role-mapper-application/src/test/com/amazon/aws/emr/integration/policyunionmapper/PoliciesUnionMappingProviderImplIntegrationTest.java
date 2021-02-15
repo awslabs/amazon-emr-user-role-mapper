@@ -2,6 +2,7 @@ package com.amazon.aws.emr.integration.policyunionmapper;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.amazon.aws.emr.common.system.impl.CommandBasedPrincipalResolver;
@@ -19,6 +20,8 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.util.EC2MetadataUtils;
+
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -168,18 +171,25 @@ public class PoliciesUnionMappingProviderImplIntegrationTest extends Integration
     }
     // Role deletion requires no policies to be attached.
     if (testRoleArn != null && testPolicyArn != null) {
+      log.info("Detaching " + testPolicyArn + " from " + testRoleArn);
       IAMUtils.detachPolicyFromRole(testRoleName, testPolicyArn);
     }
     if (testRoleArn != null) {
+      log.info("Deleting role: " + testRoleArn);
       IAMUtils.deleteRole(testRoleName);
     }
+    //Give time for IAM to delete the role.
+    Thread.sleep(2 * 1000);
     if (testPolicyArn != null) {
+      log.info("Deleting policy: " + testPolicyArn);
       IAMUtils.deletePolicy(testPolicyArn);
     }
     if (userPolicyArn != null) {
+      log.info("Deleting policy: " + userPolicyArn);
       IAMUtils.deletePolicy(userPolicyArn);
     }
     if (groupPolicyArn != null) {
+      log.info("Deleting policy: " + groupPolicyArn);
       IAMUtils.deletePolicy(groupPolicyArn);
     }
 
@@ -215,13 +225,7 @@ public class PoliciesUnionMappingProviderImplIntegrationTest extends Integration
         new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + testRoleName);
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
     assertThat(httpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_OK));
-    String responseString = new BasicResponseHandler().handleResponse(httpResponse);
-    EC2MetadataUtils.IAMSecurityCredential credentials = GSON.fromJson(responseString,
-        EC2MetadataUtils.IAMSecurityCredential.class);
-    BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(
-        credentials.accessKeyId,
-        credentials.secretAccessKey,
-        credentials.token);
+    BasicSessionCredentials sessionCredentials = getCredentialsFromResponse(httpResponse);
 
     AmazonS3 s3 = AmazonS3ClientBuilder.standard()
         .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
@@ -246,32 +250,71 @@ public class PoliciesUnionMappingProviderImplIntegrationTest extends Integration
         new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + testRoleName);
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
     assertThat(httpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_OK));
-    String responseString = new BasicResponseHandler().handleResponse(httpResponse);
-    EC2MetadataUtils.IAMSecurityCredential credentials = GSON.fromJson(responseString,
-        EC2MetadataUtils.IAMSecurityCredential.class);
-    BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(
-        credentials.accessKeyId,
-        credentials.secretAccessKey,
-        credentials.token);
+    BasicSessionCredentials sessionCredentials = getCredentialsFromResponse(httpResponse);
 
     AmazonS3 s3 = AmazonS3ClientBuilder.standard()
         .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
         .build();
-    S3Object s3Object1 = s3.getObject(new GetObjectRequest(USER_ACCESS_BUCKET, TEST_CFG_OBJECT));
-    assertThat(S3Utils.getS3FileAsString(s3Object1), is(TEST_S3_OBJECT_CONTENTS));
-    try {
-      s3.getObject(new GetObjectRequest(GROUP_ACCESS_BUCKET, TEST_CFG_OBJECT));
-      fail("Access not denied to " + GROUP_ACCESS_BUCKET);
-    } catch (AmazonServiceException e) {
-      assertThat(e.getStatusCode(), is(HttpStatus.SC_FORBIDDEN));
-    }
+    String s3Obj = testS3GetOBject(USER_ACCESS_BUCKET, TEST_CFG_OBJECT, s3, false);
+    assertEquals(s3Obj, TEST_S3_OBJECT_CONTENTS);
+    testS3GetOBject(GROUP_ACCESS_BUCKET, TEST_CFG_OBJECT, s3, true);
   }
 
   @Test
   public void disallowed_role_access() throws Exception {
     HttpUriRequest request =
-        new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + "unauthorizedrole");
+            new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + "unauthorizedrole");
     HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
     assertThat(httpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_NO_CONTENT));
   }
+
+  @Test
+  public void reload_policy_no_matching_policy() throws Exception {
+    String noMappingsJson = "{\"PrincipalPolicyMappings\": []}";
+    S3Utils.uploadObject(IntegrationTestBase.POLICY_UNION_MAPPER_IMPL_BUCKET,
+            IntegrationTestBase.POLICY_UNION_MAPPER_IMPL_MAPPING, noMappingsJson);
+    Thread.sleep(RELOAD_CFG_TIME_MIN * 60 * 1000);
+
+    HttpUriRequest request =
+        new HttpGet(LOCALHOST_SERVER + ":" + TEST_PORT + IMDS_CREDENTIALS_URI + testRoleName);
+    HttpResponse httpResponse = HttpClientBuilder.create().build().execute(request);
+    assertThat(httpResponse.getStatusLine().getStatusCode(), is(HttpStatus.SC_OK));
+
+    BasicSessionCredentials sessionCredentials = getCredentialsFromResponse(httpResponse);
+    AmazonS3 s3 = AmazonS3ClientBuilder.standard()
+            .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
+            .build();
+
+    testS3GetOBject(USER_ACCESS_BUCKET, TEST_CFG_OBJECT, s3, true);
+    testS3GetOBject(GROUP_ACCESS_BUCKET, TEST_CFG_OBJECT, s3, true);
+  }
+
+  private BasicSessionCredentials getCredentialsFromResponse(HttpResponse httpResponse)
+          throws IOException {
+    String responseString = new BasicResponseHandler().handleResponse(httpResponse);
+    EC2MetadataUtils.IAMSecurityCredential credentials = GSON.fromJson(responseString,
+            EC2MetadataUtils.IAMSecurityCredential.class);
+    return new BasicSessionCredentials(
+            credentials.accessKeyId,
+            credentials.secretAccessKey,
+            credentials.token);
+  }
+
+  private String testS3GetOBject(String bucket, String key, AmazonS3 s3, boolean shouldFail)
+          throws IOException {
+    try {
+      S3Object s3Object1 = s3.getObject(new GetObjectRequest(bucket, key));
+      if (shouldFail) {
+        fail("Access not denied to s3://" + bucket + "/" + key);
+      }
+      return S3Utils.getS3FileAsString(s3Object1);
+    } catch (AmazonServiceException e) {
+      if (shouldFail) {
+        assertThat(e.getStatusCode(), is(HttpStatus.SC_FORBIDDEN));
+        return null;
+      }
+      throw e;
+    }
+  }
+
 }

@@ -76,7 +76,9 @@ ls -lrt /usr/lib/presto/plugin/hive-hadoop2/urm-credentials-provider*.jar
 lrwxrwxrwx 1 root root 73 Dec 12 02:24 /usr/lib/presto/plugin/hive-hadoop2/urm-credentials-provider-0.1-SNAPSHOT.jar -> /usr/share/aws/emr/emrfs/auxlib/urm-credentials-provider-0.1-SNAPSHOT.jar
 ```
 
-* IMPORTANT: Presto does not support impersonation when interacting with Metadata services like Glue Data Catalog or Hive Metastore. Trino does and support for it is coming.
+* **IMPORTANT: Presto does not support impersonation when interacting with Metadata services like Glue Data Catalog or Hive Metastore. Trino does and support for it is coming.**
+
+* **IMPORTANT: Impersonation is not supported when S3 Select Predicate Push down is enabled. Ensure that its not enabled.**
 
 ### Using Glue Data Catalog as your meta store.
 
