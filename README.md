@@ -15,7 +15,7 @@ mvn clean install
 #### Package and copy artifacts to S3
 ```
 cd emr-user-role-mapper-application/usr
-cp ../target/emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar install/
+cp ../target/emr-user-role-mapper-application-1.1.0-jar-with-dependencies-and-exclude-classes.jar install/
 ```
 
 Edit the properties file in install/user-role-mapper.properties. 
@@ -105,7 +105,7 @@ Unable to locate credentials. You can configure credentials by running "aws conf
 sudo -u mapped-user aws s3 ls s3://my-custom-mapper/install
 
 2020-09-11 19:07:41       8521 ba-script.sh
-2020-09-11 19:07:40   17969053 emr-user-role-mapper-application-1.0-jar-with-dependencies-and-exclude-classes.jar
+2020-09-11 19:07:40   17969053 emr-user-role-mapper-application-1.1.0-jar-with-dependencies-and-exclude-classes.jar
 2020-09-11 19:07:41       3280 emr-user-role-mapper.conf
 2020-09-11 19:07:41        607 log4j.properties
 2020-09-11 19:07:41        254 user-role-mapper.properties
