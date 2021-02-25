@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.amazonaws.emr</groupId>
     <artifactId>amazon-emr-user-role-mapper</artifactId>
-    <version>1.0</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
     <name>Amazon EMR User Role Mapper</name>
 
