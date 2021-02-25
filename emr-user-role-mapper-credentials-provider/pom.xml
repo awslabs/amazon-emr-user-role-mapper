@@ -2,9 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.amazonaws.emr.urm</groupId>
+    <parent>
+        <groupId>com.amazonaws.emr</groupId>
+        <artifactId>amazon-emr-user-role-mapper</artifactId>
+        <version>1.1.0</version>
+    </parent>
+
     <artifactId>urm-credentials-provider</artifactId>
-    <version>0.1-SNAPSHOT</version>
 
     <name>urm-credentials-provider</name>
     <description>URM Credentials Provider</description>
