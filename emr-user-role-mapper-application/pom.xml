@@ -87,7 +87,7 @@
     <dependency>
       <groupId>com.amazonaws.emr</groupId>
       <artifactId>emr-user-role-mapper-provider</artifactId>
-      <version>1.0</version>
+      <version>1.1.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
