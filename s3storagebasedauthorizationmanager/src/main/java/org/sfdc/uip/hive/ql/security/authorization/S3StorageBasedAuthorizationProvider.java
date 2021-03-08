@@ -1,0 +1,316 @@
+package org.sfdc.uip.hive.ql.security.authorization;
+
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.AmazonS3URI;
+import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
+import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.metastore.Warehouse;
+import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.ql.metadata.AuthorizationException;
+import org.apache.hadoop.hive.ql.metadata.Hive;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.metadata.Partition;
+import org.apache.hadoop.hive.ql.metadata.Table;
+import org.apache.hadoop.hive.ql.security.authorization.HiveAuthorizationProviderBase;
+import org.apache.hadoop.hive.ql.security.authorization.HiveMetastoreAuthorizationProvider;
+import org.apache.hadoop.hive.ql.security.authorization.Privilege;
+import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.HiveMetaStore.HMSHandler;
+import org.apache.hadoop.hive.ql.security.authorization.StorageBasedAuthorizationProvider;
+
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException;
+import org.eclipse.jetty.http.HttpStatus;
+
+import java.nio.file.Path;
+import java.util.EnumSet;
+import java.util.List;
+
+import java.security.AccessControlException;
+import java.util.UUID;
+
+public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProviderBase
+        implements HiveMetastoreAuthorizationProvider{
+
+    private static final String HDFS_SCHEME = "hdfs://";
+    private static final Log LOG = LogFactory.getLog(S3StorageBasedAuthorizationProvider.class);
+
+    //private static FileWriter myWriter;
+    private Warehouse wh;
+    private boolean isRunFromMetaStore = false;
+
+    private URMCredentialsRetriever urmCredentialsRetriever;
+
+    S3StorageBasedAuthorizationProvider(URMCredentialsRetriever urmCredentialsRetriever) {
+        this.urmCredentialsRetriever = urmCredentialsRetriever;
+    }
+
+    public S3StorageBasedAuthorizationProvider() {
+        this.urmCredentialsRetriever = new URMCredentialsRetriever();
+    }
+
+    /**
+     * Make sure that the warehouse variable is set up properly.
+     * @throws MetaException if unable to instantiate
+     */
+    private void initWh() throws MetaException, HiveException, MetaException {
+        if (wh == null){
+            if(!isRunFromMetaStore){
+                // Note, although HiveProxy has a method that allows us to check if we're being
+                // called from the metastore or from the client, we don't have an initialized HiveProxy
+                // till we explicitly initialize it as being from the client side. So, we have a
+                // chicken-and-egg problem. So, we now track whether or not we're running from client-side
+                // in the SBAP itself.
+                hive_db = new HiveProxy(Hive.get(getConf(), StorageBasedAuthorizationProvider.class));
+                this.wh = new Warehouse(getConf());
+            } else {
+                // not good if we reach here, this was initialized at setMetaStoreHandler() time.
+                // this means handler.getWh() is returning null. Error out.
+                throw new IllegalStateException("Uninitialized Warehouse from MetastoreHandler");
+            }
+        }
+    }
+
+    @Override
+    public void init(Configuration conf) throws HiveException {
+        hive_db = new HiveProxy();
+    }
+
+    @Override
+    public void authorize(Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
+            throws HiveException, AuthorizationException {
+        // Currently not used in hive code-base, but intended to authorize actions
+        // that are directly user-level. As there's no storage based aspect to this,
+        // we can follow one of two routes:
+        // a) We can allow by default - that way, this call stays out of the way
+        // b) We can deny by default - that way, no privileges are authorized that
+        // is not understood and explicitly allowed.
+        // Both approaches have merit, but given that things like grants and revokes
+        // that are user-level do not make sense from the context of storage-permission
+        // based auth, denying seems to be more canonical here.
+
+        // Update to previous comment: there does seem to be one place that uses this
+        // and that is to authorize "show databases" in hcat commandline, which is used
+        // by webhcat. And user-level auth seems to be a reasonable default in this case.
+        // The now deprecated HdfsAuthorizationProvider in hcatalog approached this in
+        // another way, and that was to see if the user had said above appropriate requested
+        // privileges for the hive root warehouse directory. That seems to be the best
+        // mapping for user level privileges to storage. Using that strategy here.
+
+        Path root = null;
+        try {
+            initWh();
+            root = (Path) wh.getWhRoot();
+            authorize(root.toString(), readRequiredPriv, writeRequiredPriv);
+        } catch (MetaException ex) {
+            throw hiveException(ex);
+        }
+    }
+
+    @Override
+    public void authorize(Database db, Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
+            throws HiveException, AuthorizationException {
+        authorize(db.getLocationUri(), readRequiredPriv, writeRequiredPriv);
+    }
+
+    @Override
+    public void authorize(Table table, Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
+            throws HiveException, AccessControlException {
+        authorize(table.getDataLocation().toString(), readRequiredPriv, writeRequiredPriv);
+    }
+
+    @Override
+    public void authorize(Partition part, Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
+            throws HiveException, AuthorizationException {
+        authorize(part.getTable(), part, readRequiredPriv, writeRequiredPriv);
+    }
+
+    private void authorize(Table table, Partition part, Privilege[] readRequiredPriv,
+                           Privilege[] writeRequiredPriv)
+            throws HiveException, AuthorizationException {
+        // Partition path can be null in the case of a new create partition - in this case,
+        // we try to default to checking the permissions of the parent table.
+        // Partition itself can also be null, in cases where this gets called as a generic
+        // catch-all call in cases like those with CTAS onto an unpartitioned table (see HIVE-1887)
+        if ((part == null) || (part.getLocation() == null)) {
+            // this should be the case only if this is a create partition.
+            // The privilege needed on the table should be ALTER_DATA, and not CREATE
+            authorize(table, new Privilege[]{}, new Privilege[]{Privilege.ALTER_DATA});
+        } else {
+            authorize(part.getDataLocation().toString(), readRequiredPriv, writeRequiredPriv);
+        }
+    }
+
+    @Override
+    public void authorize(Table table, Partition part, List<String> columns,
+                          Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv) throws HiveException,
+            AuthorizationException {
+        // In a simple storage-based auth, we have no information about columns
+        // living in different files, so we do simple partition-auth and ignore
+        // the columns parameter.
+        authorize(table, part, readRequiredPriv, writeRequiredPriv);
+    }
+
+    @Override
+    public void setMetaStoreHandler(HMSHandler handler) {
+        hive_db.setHandler(handler);
+        this.wh = handler.getWh();
+        this.isRunFromMetaStore = true;
+    }
+
+    @Override
+    public void authorizeAuthorizationApiInvocation() throws HiveException, AuthorizationException {
+        // no-op - SBA does not attempt to authorize auth api call. Allow it
+    }
+
+    /**
+     * Authorization privileges against a path.
+     *
+     * @param path
+     *          a filesystem path
+     * @param readRequiredPriv
+     *          a list of privileges needed for inputs.
+     * @param writeRequiredPriv
+     *          a list of privileges needed for outputs.
+     */
+    @VisibleForTesting
+    void authorize(String path, Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
+            throws HiveException, AuthorizationException {
+        //if path is a hdfs one, skip and return
+        if(path.startsWith(HDFS_SCHEME)) {
+            LOG.info("A hdfs path has encountered, do nothing");
+            return;
+        }
+
+        try {
+            EnumSet<S3Action> actions = getS3Actions(readRequiredPriv);
+            actions.addAll(getS3Actions(writeRequiredPriv));
+            if (actions.isEmpty()) {
+                return;
+            }
+            checkPermissions(path, actions);
+        } catch (AccessControlException ex) {
+            throw authorizationException(ex);
+        } catch (Exception e) {
+            throw new HiveAccessControlException("Failed to authorize request. ", e);
+        }
+    }
+
+    /**
+     * Given a Privilege[], find out what all S3Actions are required
+     */
+    protected EnumSet<S3Action> getS3Actions(Privilege[] privs) {
+        EnumSet<S3Action> actions = EnumSet.noneOf(S3Action.class);
+
+        if (privs == null) {
+            return actions;
+        }
+
+        for (Privilege priv : privs) {
+            actions.add(getS3Action(priv));
+        }
+
+        return actions;
+    }
+
+    /**
+     * Given a privilege, return what S3Actions are required
+     */
+    protected S3Action getS3Action(Privilege priv) {
+
+        switch (priv.getPriv()) {
+            case ALL:
+                return S3Action.ALL;
+            case ALTER_DATA:
+            case ALTER_METADATA:
+            case CREATE:
+            case DROP:
+                return S3Action.WRITE;
+            case INDEX:
+                throw new AuthorizationException(
+                        "StorageBasedAuthorizationProvider cannot handle INDEX privilege");
+            case LOCK:
+                throw new AuthorizationException(
+                        "StorageBasedAuthorizationProvider cannot handle LOCK privilege");
+            case SELECT:
+            case SHOW_DATABASE:
+                return S3Action.READ;
+            case UNKNOWN:
+            default:
+                throw new AuthorizationException("Unknown privilege: " + priv.toString());
+        }
+    }
+
+    private void checkPermissions(String path, EnumSet<S3Action> actions) throws AccessControlException {
+        String userName = this.authenticator.getUserName();
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Checking permissions for user: %s for path: %s for actions: %s", userName, path, actions.toString()));
+        }
+
+        AWSCredentials sessionCredentials = urmCredentialsRetriever.getCredentialsForUser(userName);
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                    .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
+                    .build();
+
+        for(S3Action action : actions){
+            checkActionS3(s3Client, action, path, userName);
+        }
+    }
+
+    private void checkActionS3(AmazonS3 s3Client, S3Action action, String path, String userName) throws AccessControlException  {
+        AmazonS3URI s3URIparser = new AmazonS3URI(path);
+
+        String bucketName = s3URIparser.getBucket();
+        String objectKey = s3URIparser.getKey();
+        String prefix = objectKey + "/";
+
+        if (action.equals(S3Action.READ)) {
+            //Allow read permission to all
+            return;
+        }
+
+        //Validate if Write permissions are available with returned credentials.
+        if (action.equals(S3Action.WRITE) || action.equals(S3Action.ALL)) {
+            String writeObjectPrefix = prefix + RandomString() + userName;
+            InitiateMultipartUploadRequest initRequest = new InitiateMultipartUploadRequest(bucketName, writeObjectPrefix);
+            String uploadId = null;
+            try {
+                uploadId = s3Client.initiateMultipartUpload(initRequest).getUploadId();
+            } catch (AmazonServiceException ex) {
+                if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED_401 ||
+                        ex.getStatusCode() == HttpStatus.FORBIDDEN_403) {
+                    throw new AccessControlException("User: " + userName + " does not have privilege: "
+                            + action.toString() + " for path: " + bucketName + "/" + writeObjectPrefix);
+                }
+                throw new RuntimeException("Caught unexpected exception when calling S3: " + ex.getMessage(), ex);
+            } finally {
+                if (uploadId != null) {
+                    s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(bucketName,
+                            writeObjectPrefix, uploadId));
+                }
+            }
+        }
+
+        LOG.debug("Current invalid action");
+    }
+
+     private HiveException hiveException(Exception e) {
+        return new HiveException(e);
+    }
+
+    private AuthorizationException authorizationException(Exception e) {
+        return new AuthorizationException(e);
+    }
+
+    private String RandomString() {
+        return UUID.randomUUID().toString();
+    }
+}
