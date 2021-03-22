@@ -86,24 +86,6 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
     @Override
     public void authorize(Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
             throws HiveException, AuthorizationException {
-        // Currently not used in hive code-base, but intended to authorize actions
-        // that are directly user-level. As there's no storage based aspect to this,
-        // we can follow one of two routes:
-        // a) We can allow by default - that way, this call stays out of the way
-        // b) We can deny by default - that way, no privileges are authorized that
-        // is not understood and explicitly allowed.
-        // Both approaches have merit, but given that things like grants and revokes
-        // that are user-level do not make sense from the context of storage-permission
-        // based auth, denying seems to be more canonical here.
-
-        // Update to previous comment: there does seem to be one place that uses this
-        // and that is to authorize "show databases" in hcat commandline, which is used
-        // by webhcat. And user-level auth seems to be a reasonable default in this case.
-        // The now deprecated HdfsAuthorizationProvider in hcatalog approached this in
-        // another way, and that was to see if the user had said above appropriate requested
-        // privileges for the hive root warehouse directory. That seems to be the best
-        // mapping for user level privileges to storage. Using that strategy here.
-
         Path root = null;
         try {
             initWh();
@@ -208,15 +190,12 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
      */
     protected EnumSet<S3Action> getS3Actions(Privilege[] privs) {
         EnumSet<S3Action> actions = EnumSet.noneOf(S3Action.class);
-
         if (privs == null) {
             return actions;
         }
-
         for (Privilege priv : privs) {
             actions.add(getS3Action(priv));
         }
-
         return actions;
     }
 

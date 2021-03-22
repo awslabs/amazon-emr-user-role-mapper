@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URLConnection;
+import java.util.stream.Collectors;
 
 public class URMCredentialsRetriever
 {
@@ -28,11 +29,7 @@ public class URMCredentialsRetriever
 
             try (BufferedReader rd = new BufferedReader(new InputStreamReader(response))) {
                 StringBuilder responseString = new StringBuilder(); // or StringBuffer if Java version 5+
-                String line;
-                while ((line = rd.readLine()) != null) {
-                    responseString.append(line);
-                    responseString.append('\r');
-                }
+                String line = rd.lines().collect(Collectors.joining("\n"));
                 return extractCredentialsFromResponse(responseString.toString());
             }
         } catch (Exception e) {

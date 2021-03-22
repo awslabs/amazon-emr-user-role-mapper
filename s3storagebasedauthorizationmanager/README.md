@@ -6,7 +6,7 @@ https://cwiki.apache.org/confluence/display/Hive/Storage+Based+Authorization+in+
 
 **Build**
 
-git clone https://github.com/shi-wen/s3HMSAuthorizationManager.git
+git clone https://github.com/awslabs/amazon-emr-user-role-mapper.git
 cd s3storagebasedauthorizationmanager
 mvn clean install
 
