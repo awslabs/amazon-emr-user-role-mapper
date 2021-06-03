@@ -13,6 +13,7 @@
         <module>emr-user-role-mapper-interface</module>
         <module>emr-user-role-mapper-application</module>
         <module>emr-user-role-mapper-credentials-provider</module>
+        <module>emr-user-role-mapper-s3storagebasedauthorizationmanager</module>
     </modules>
 
     <licenses>

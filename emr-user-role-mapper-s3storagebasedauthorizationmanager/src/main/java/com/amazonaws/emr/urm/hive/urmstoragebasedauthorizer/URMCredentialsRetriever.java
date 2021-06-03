@@ -1,4 +1,4 @@
-package org.sfdc.uip.hive.ql.security.authorization;
+package com.amazonaws.emr.urm.hive.urmstoragebasedauthorizer;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URLConnection;
-import java.util.stream.Collectors;
 
 public class URMCredentialsRetriever
 {
