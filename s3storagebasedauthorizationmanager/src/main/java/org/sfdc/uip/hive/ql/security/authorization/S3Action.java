@@ -6,5 +6,4 @@ public enum S3Action {
     WRITE,
     READ,
     ALL,
-    DELETE;
 }

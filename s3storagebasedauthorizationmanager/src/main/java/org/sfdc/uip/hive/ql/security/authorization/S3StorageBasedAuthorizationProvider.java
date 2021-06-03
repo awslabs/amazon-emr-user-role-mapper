@@ -1,4 +1,4 @@
-package org.sfdc.uip.hive.ql.security.authorization;
+package com.amazonaws.emr.urm.hivestoragebasedauthorizer;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
@@ -23,7 +23,7 @@ import org.apache.hadoop.hive.ql.security.authorization.HiveAuthorizationProvide
 import org.apache.hadoop.hive.ql.security.authorization.HiveMetastoreAuthorizationProvider;
 import org.apache.hadoop.hive.ql.security.authorization.Privilege;
 import org.apache.hadoop.hive.metastore.api.Database;
-import org.apache.hadoop.hive.metastore.HiveMetaStore.HMSHandler;
+import org.apache.hadoop.hive.metastore.IHMSHandler;
 import org.apache.hadoop.hive.ql.security.authorization.StorageBasedAuthorizationProvider;
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException;
@@ -105,6 +105,10 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
     @Override
     public void authorize(Table table, Privilege[] readRequiredPriv, Privilege[] writeRequiredPriv)
             throws HiveException, AccessControlException {
+        //Authorize view, not supported.
+        if(table.isView() || table.isMaterializedView()){
+            return;
+        }
         authorize(table.getDataLocation().toString(), readRequiredPriv, writeRequiredPriv);
     }
 
@@ -141,7 +145,7 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
     }
 
     @Override
-    public void setMetaStoreHandler(HMSHandler handler) {
+    public void setMetaStoreHandler(IHMSHandler handler) {
         hive_db.setHandler(handler);
         this.wh = handler.getWh();
         this.isRunFromMetaStore = true;
@@ -181,6 +185,7 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
         } catch (AccessControlException ex) {
             throw authorizationException(ex);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new HiveAccessControlException("Failed to authorize request. ", e);
         }
     }
@@ -212,9 +217,6 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
             case CREATE:
             case DROP:
                 return S3Action.WRITE;
-            case INDEX:
-                throw new AuthorizationException(
-                        "StorageBasedAuthorizationProvider cannot handle INDEX privilege");
             case LOCK:
                 throw new AuthorizationException(
                         "StorageBasedAuthorizationProvider cannot handle LOCK privilege");

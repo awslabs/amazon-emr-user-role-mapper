@@ -1,4 +1,4 @@
-package org.sfdc.uip.hive.ql.security.authorization;
+package com.amazonaws.emr.urm.hivestoragebasedauthorizer;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
@@ -142,18 +142,6 @@ public class S3StorageBasedAuthorizationProviderTest
 
             throw ace;
         }
-    }
-
-    @Test(expected = HiveAccessControlException.class)
-    public void test_index_operation() throws HiveException
-    {
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.getLocationUri()).thenReturn("s3://somebucket/somePrefix");
-
-        Privilege[] readPrivileges = new Privilege[] {Privilege.INDEX};
-        Privilege[] writePrivileges = new Privilege[] {};
-
-        provider.authorize(mockDatabase, readPrivileges, writePrivileges);
     }
 
     @Test(expected = HiveAccessControlException.class)

@@ -26,10 +26,13 @@ public class URMCredentialsRetriever
             URI uri = URI.create(URM_ADDRESS_FOR_IMPERSONATION + userName);
             URLConnection connection = uri.toURL().openConnection();
             InputStream response = connection.getInputStream();
-
             try (BufferedReader rd = new BufferedReader(new InputStreamReader(response))) {
                 StringBuilder responseString = new StringBuilder(); // or StringBuffer if Java version 5+
-                String line = rd.lines().collect(Collectors.joining("\n"));
+                String line;
+                while ((line = rd.readLine()) != null) {
+                    responseString.append(line);
+                    responseString.append('\r');
+                }
                 return extractCredentialsFromResponse(responseString.toString());
             }
         } catch (Exception e) {
