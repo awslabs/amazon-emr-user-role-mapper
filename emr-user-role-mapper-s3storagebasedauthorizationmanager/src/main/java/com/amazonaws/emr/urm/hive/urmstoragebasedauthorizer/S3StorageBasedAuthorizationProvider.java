@@ -271,6 +271,9 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
 
     private String addSlashIfNotExists(String objectKey)
     {
+        if (objectKey == null) {
+            return "";
+        }
         if (!objectKey.endsWith("/")) {
             return objectKey + "/";
         }
