@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.amazonaws.emr</groupId>
     <artifactId>amazon-emr-user-role-mapper</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>emr-user-role-mapper-application</artifactId>
@@ -38,7 +38,7 @@
       <groupId>com.amazonaws.emr</groupId>
       <artifactId>emr-user-role-mapper-provider</artifactId>
       <scope>compile</scope>
-      <version>1.1.0</version>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>
