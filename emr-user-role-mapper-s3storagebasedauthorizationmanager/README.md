@@ -4,7 +4,9 @@ This is a plug in intended for Hive Metastore Service (HMS) for its authorizatio
 
 ## Build
 
-Change *hive.version* in pom.xml for the version of hive that you will be using. It should work with Hive 3.x, however, if Hive 2.x is needed, then some code changes may be necessary. 
+Change *hive.version* in pom.xml for the version of hive that you will be using. It should work with Hive 3.x, however, if Hive 2.x is needed, then some code changes may be necessary.
+
+**NOTE:** We have not tested this plugin with HMS in Standalone mode.   
 
 ```
 git clone https://github.com/awslabs/amazon-emr-user-role-mapper.git
