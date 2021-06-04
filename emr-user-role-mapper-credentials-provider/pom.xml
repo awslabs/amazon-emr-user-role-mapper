@@ -10,7 +10,7 @@
 
     <artifactId>urm-credentials-provider</artifactId>
 
-    <name>urm-credentials-provider</name>
+    <name>Amazon EMR User Role Mapper URM Credentials Provider</name>
     <description>URM Credentials Provider</description>
     <url>https://github.com/awslabs/amazon-emr-user-role-mapper/</url>
 
