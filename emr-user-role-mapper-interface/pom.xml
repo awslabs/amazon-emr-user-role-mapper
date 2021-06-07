@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.amazonaws.emr</groupId>
         <artifactId>amazon-emr-user-role-mapper</artifactId>
-        <version>1.1.0</version>
+        <version>1.2.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>emr-user-role-mapper-provider</artifactId>

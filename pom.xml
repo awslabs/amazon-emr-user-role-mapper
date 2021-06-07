@@ -5,7 +5,7 @@
 
     <groupId>com.amazonaws.emr</groupId>
     <artifactId>amazon-emr-user-role-mapper</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Amazon EMR User Role Mapper</name>
 
@@ -13,6 +13,7 @@
         <module>emr-user-role-mapper-interface</module>
         <module>emr-user-role-mapper-application</module>
         <module>emr-user-role-mapper-credentials-provider</module>
+        <module>emr-user-role-mapper-s3storagebasedauthorizationmanager</module>
     </modules>
 
     <licenses>

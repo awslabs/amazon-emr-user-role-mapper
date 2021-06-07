@@ -1,4 +1,4 @@
-package com.amazonaws.emr.urm.hivestoragebasedauthorizer;
+package com.amazonaws.emr.urm.hive.urmstoragebasedauthorizer;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
@@ -9,6 +9,9 @@ import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.ql.metadata.AuthorizationException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -29,12 +32,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.security.AccessControlException;
 
-import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -62,11 +67,20 @@ public class S3StorageBasedAuthorizationProviderTest
     @Mock
     AWSCredentials mockCredentials;
 
+    @Mock
+    Database mockDatabase;
+
+    @Mock
+    Configuration mockConfiguration;
+
     @Captor
     ArgumentCaptor<InitiateMultipartUploadRequest> s3InitiateUploadRequestCaptor;
 
     @Captor
     ArgumentCaptor<AbortMultipartUploadRequest> s3AbortUploadRequestCaptor;
+
+    @Captor
+    ArgumentCaptor<ListObjectsV2Request> s3ListObjectsV2RequestCaptor;
 
     S3StorageBasedAuthorizationProvider provider;
 
@@ -83,18 +97,19 @@ public class S3StorageBasedAuthorizationProviderTest
         when(mockURMCredentialsRetriever.getCredentialsForUser(eq(USER)))
                 .thenReturn(mockCredentials);
 
+        when(mockConfiguration.getBoolean(eq(S3StorageBasedAuthorizationProvider.SKIP_READ_PERMISSIONS_CONF), anyBoolean())).thenReturn(false);
+        when(mockDatabase.getLocationUri()).thenReturn("s3://somebucket/somePrefix");
+
         provider = new S3StorageBasedAuthorizationProvider(mockURMCredentialsRetriever);
+        provider.setConf(mockConfiguration);
         provider.setAuthenticator(mockHiveAuthenticationProvider);
     }
 
     @Test
-    public void test_privilegeCheckOnTable_read_write_privileges()
+    public void test_privilegeCheckOnTable_write_privileges()
             throws HiveException
     {
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.getLocationUri()).thenReturn("s3://somebucket/somePrefix");
-
-        Privilege[] readPrivileges = new Privilege[] {Privilege.SELECT};
+        Privilege[] readPrivileges = new Privilege[] {};
         Privilege[] writePrivileges = new Privilege[] {Privilege.ALTER_DATA};
 
         InitiateMultipartUploadResult response = mock(InitiateMultipartUploadResult.class);
@@ -114,12 +129,42 @@ public class S3StorageBasedAuthorizationProviderTest
         assertEquals(s3AbortUploadRequestCaptor.getValue().getUploadId(), UPLOAD_ID);
     }
 
+    @Test
+    public void test_privilegeCheckOnTable_read_privileges()
+            throws HiveException
+    {
+        Privilege[] readPrivileges = new Privilege[] {Privilege.SELECT};
+        Privilege[] writePrivileges = new Privilege[] {};
+
+        ListObjectsV2Result listObjectsV2Result = mock(ListObjectsV2Result.class);
+        when(s3Client.listObjectsV2((ListObjectsV2Request) any())).thenReturn(listObjectsV2Result);
+
+        provider.authorize(mockDatabase, readPrivileges, writePrivileges);
+
+        verify(s3Client).listObjectsV2(s3ListObjectsV2RequestCaptor.capture());
+
+        assertEquals(s3ListObjectsV2RequestCaptor.getValue().getBucketName(), "somebucket");
+        assertTrue(s3ListObjectsV2RequestCaptor.getValue().getPrefix().startsWith("somePrefix/"));
+    }
+
+    @Test
+    public void test_privilegeCheckOnTable_read_privileges_skipped_from_conf()
+            throws HiveException
+    {
+        reset(mockConfiguration);
+        when(mockConfiguration.getBoolean(eq(S3StorageBasedAuthorizationProvider.SKIP_READ_PERMISSIONS_CONF), anyBoolean())).thenReturn(true);
+
+        Privilege[] readPrivileges = new Privilege[] {Privilege.SELECT};
+        Privilege[] writePrivileges = new Privilege[] {};
+
+        provider.authorize(mockDatabase, readPrivileges, writePrivileges);
+
+        verify(s3Client, never()).listObjectsV2((ListObjectsV2Request) any());
+    }
+
     @Test(expected = AuthorizationException.class)
     public void test_unauthorized_s3_returns_403() throws HiveException
     {
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.getLocationUri()).thenReturn("s3://somebucket/somePrefix");
-
         Privilege[] readPrivileges = new Privilege[] {};
         Privilege[] writePrivileges = new Privilege[] {Privilege.ALTER_DATA};
 
@@ -147,9 +192,6 @@ public class S3StorageBasedAuthorizationProviderTest
     @Test(expected = HiveAccessControlException.class)
     public void test_lock_operation() throws HiveException
     {
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.getLocationUri()).thenReturn("s3://somebucket/somePrefix");
-
         Privilege[] readPrivileges = new Privilege[] {Privilege.LOCK};
         Privilege[] writePrivileges = new Privilege[] {};
 

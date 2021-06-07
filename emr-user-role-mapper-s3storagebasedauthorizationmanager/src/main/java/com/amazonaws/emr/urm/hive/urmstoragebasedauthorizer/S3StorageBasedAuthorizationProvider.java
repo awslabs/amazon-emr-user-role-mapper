@@ -1,4 +1,4 @@
-package com.amazonaws.emr.urm.hivestoragebasedauthorizer;
+package com.amazonaws.emr.urm.hive.urmstoragebasedauthorizer;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
@@ -8,6 +8,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.AmazonS3URI;
 import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,10 +42,13 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
 
     private static final String HDFS_SCHEME = "hdfs://";
     private static final Log LOG = LogFactory.getLog(S3StorageBasedAuthorizationProvider.class);
+    private static final boolean SKIP_READ_PERMISSIONS_DEFAULT = false;
 
     //private static FileWriter myWriter;
     private Warehouse wh;
     private boolean isRunFromMetaStore = false;
+
+    static final String SKIP_READ_PERMISSIONS_CONF = "hive.metastore.authorization.s3sba.urm.skipreadpermissions";
 
     private URMCredentialsRetriever urmCredentialsRetriever;
 
@@ -251,39 +255,71 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
 
         String bucketName = s3URIparser.getBucket();
         String objectKey = s3URIparser.getKey();
-        String prefix = objectKey + "/";
+        String prefix = addSlashIfNotExists(objectKey);
 
-        if (action.equals(S3Action.READ)) {
-            //Allow read permission to all
-            return;
+        if (action.equals(S3Action.READ) || action.equals(S3Action.ALL)) {
+            if (!getConf().getBoolean(SKIP_READ_PERMISSIONS_CONF, SKIP_READ_PERMISSIONS_DEFAULT)) {
+                testReadPath(s3Client, action, bucketName, prefix, userName);
+            }
         }
 
         //Validate if Write permissions are available with returned credentials.
         if (action.equals(S3Action.WRITE) || action.equals(S3Action.ALL)) {
-            String writeObjectPrefix = prefix + RandomString() + userName;
-            InitiateMultipartUploadRequest initRequest = new InitiateMultipartUploadRequest(bucketName, writeObjectPrefix);
-            String uploadId = null;
-            try {
-                uploadId = s3Client.initiateMultipartUpload(initRequest).getUploadId();
-            } catch (AmazonServiceException ex) {
-                if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED_401 ||
-                        ex.getStatusCode() == HttpStatus.FORBIDDEN_403) {
-                    throw new AccessControlException("User: " + userName + " does not have privilege: "
-                            + action.toString() + " for path: " + bucketName + "/" + writeObjectPrefix);
-                }
-                throw new RuntimeException("Caught unexpected exception when calling S3: " + ex.getMessage(), ex);
-            } finally {
-                if (uploadId != null) {
-                    s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(bucketName,
-                            writeObjectPrefix, uploadId));
-                }
-            }
+            testWritePath(s3Client, action, userName, bucketName, prefix);
         }
-
-        LOG.debug("Current invalid action");
     }
 
-     private HiveException hiveException(Exception e) {
+    private String addSlashIfNotExists(String objectKey)
+    {
+        if (objectKey == null) {
+            return "";
+        }
+        if (!objectKey.endsWith("/")) {
+            return objectKey + "/";
+        }
+        return objectKey;
+    }
+
+    private void testWritePath(AmazonS3 s3Client, S3Action action, String userName, String bucketName, String prefix)
+    {
+        String writeObjectPrefix = prefix + RandomString() + userName;
+        InitiateMultipartUploadRequest initRequest = new InitiateMultipartUploadRequest(bucketName, writeObjectPrefix);
+        String uploadId = null;
+        try {
+            uploadId = s3Client.initiateMultipartUpload(initRequest).getUploadId();
+        } catch (AmazonServiceException ex) {
+            checkAwsStatusCode(action, bucketName, writeObjectPrefix, userName, ex);
+        } finally {
+            if (uploadId != null) {
+                s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(bucketName,
+                        writeObjectPrefix, uploadId));
+            }
+        }
+    }
+
+    private void testReadPath(AmazonS3 s3Client, S3Action action, String bucketName, String path, String userName) {
+        ListObjectsV2Request listObjectsV2Request = new ListObjectsV2Request()
+                .withBucketName(bucketName)
+                .withPrefix(path)
+                .withMaxKeys(1);
+        try {
+            s3Client.listObjectsV2(listObjectsV2Request);
+        } catch (AmazonServiceException ex) {
+            checkAwsStatusCode(action, bucketName, path, userName, ex);
+        }
+    }
+
+    private void checkAwsStatusCode(S3Action action, String bucketName, String path, String userName, AmazonServiceException ex)
+    {
+        if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED_401 ||
+                ex.getStatusCode() == HttpStatus.FORBIDDEN_403) {
+            throw new AccessControlException("User: " + userName + " does not have privilege: "
+                    + action.toString() + " for path: " + bucketName + "/" + path);
+        }
+        throw new RuntimeException("Caught unexpected exception when calling S3: " + ex.getMessage(), ex);
+    }
+
+    private HiveException hiveException(Exception e) {
         return new HiveException(e);
     }
 
