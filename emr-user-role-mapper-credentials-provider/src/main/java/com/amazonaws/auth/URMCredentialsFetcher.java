@@ -5,6 +5,8 @@ import com.amazonaws.internal.InstanceMetadataServiceResourceFetcher;
 import com.amazonaws.retry.internal.CredentialsEndpointRetryParameters;
 import com.amazonaws.retry.internal.CredentialsEndpointRetryPolicy;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.net.URI;
 
@@ -20,8 +22,11 @@ public class URMCredentialsFetcher
         extends BaseCredentialsFetcher
         implements CredentialsEndpointRetryPolicy
 {
+    private static final Log LOG = LogFactory.getLog(URMCredentialsFetcher.class);
+
     final private static String IMPERSONATION_PATH = "http://localhost:9944/latest/meta-data/iam/security-credentials/impersonation/";
     private URI impersonationURI;
+    private String currentUser;
 
     private final EC2ResourceFetcher resourceFetcher;
 
@@ -33,17 +38,24 @@ public class URMCredentialsFetcher
     @VisibleForTesting
     URMCredentialsFetcher(String user, EC2ResourceFetcher ec2ResourceFetcher)
     {
-        this.impersonationURI = URI.create(IMPERSONATION_PATH + user);
+        setImpersonationUser(user);
         this.resourceFetcher = ec2ResourceFetcher;
     }
 
     public void setImpersonationUser(String user) {
-        this.impersonationURI = URI.create(IMPERSONATION_PATH + user);
+        if (!currentUser.equalsIgnoreCase(user)) {
+            this.currentUser = user;
+            this.impersonationURI = URI.create(IMPERSONATION_PATH + user);
+            this.refresh();
+        }
     }
 
     @Override
     protected String getCredentialsResponse()
     {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("URMCredentialsFetcher: Calling URI: " + impersonationURI.toASCIIString());
+        }
         return resourceFetcher.readResource(impersonationURI, this);
     }
 
