@@ -101,6 +101,9 @@ public class MappingInvoker {
         readLockInRwLock.lock();
         try {
             Optional<AssumeRoleRequest> assumeRoleRequest = roleMapperProvider.getMapping(username);
+            if (assumeRoleRequest.isPresent() && applicationConfiguration.isSetSourceIdentityEnabled()) {
+                assumeRoleRequest.get().setSourceIdentity(username);
+            }
             log.debug("Found mapping for {} as {}", username, assumeRoleRequest);
             return assumeRoleRequest;
         } catch (Throwable t) {

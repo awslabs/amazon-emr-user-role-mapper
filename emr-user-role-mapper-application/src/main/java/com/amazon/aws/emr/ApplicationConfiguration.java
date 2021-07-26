@@ -100,6 +100,12 @@ public class ApplicationConfiguration {
     public Set<String> getAllowedUsersForImpersonation() {
         return this.IMPERSONATION_ALLOWED_USERS;
     }
+
+    public boolean isSetSourceIdentityEnabled() {
+        return Boolean.parseBoolean(properties.getProperty(Constants.SET_SOURCE_IDENTITY_ENABLED,
+            String.valueOf("false")));
+    }
+
     public Map<String, String> asMap() {
         return Maps.fromProperties(properties);
     }

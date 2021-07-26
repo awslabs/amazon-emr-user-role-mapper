@@ -82,6 +82,9 @@ final public class Constants {
 
     public static final String IMPERSONATION_ALLOWED_USERS = "rolemapper.impersonation.allowed.users";
 
+    // Set the source identity in the Assume Role calls
+    public static final String SET_SOURCE_IDENTITY_ENABLED = "rolemapper.sourceidentity.enabled";
+
     private Constants() {
     }
 
