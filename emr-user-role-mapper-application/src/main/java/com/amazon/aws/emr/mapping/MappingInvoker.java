@@ -103,8 +103,15 @@ public class MappingInvoker {
             Optional<AssumeRoleRequest> assumeRoleRequest = roleMapperProvider.getMapping(username);
             if (assumeRoleRequest.isPresent() && applicationConfiguration.isSetSourceIdentityEnabled()) {
                 assumeRoleRequest.get().setSourceIdentity(username);
+<<<<<<< HEAD
             }
             log.debug("Found mapping for {} as {}", username, assumeRoleRequest);
+=======
+            } else {
+                log.info("Not setting source identity");
+            }
+            log.info("Found mapping for {} as {}", username, assumeRoleRequest);
+>>>>>>> 62d67f4a23a1a4a13d3436b254642786f891bfd5
             return assumeRoleRequest;
         } catch (Throwable t) {
             // We are running some custom code that could throw anything.
