@@ -38,8 +38,10 @@ public class URMCredentialsFetcher
     @VisibleForTesting
     URMCredentialsFetcher(String user, EC2ResourceFetcher ec2ResourceFetcher)
     {
-        setImpersonationUser(user);
+        this.currentUser = user;
         this.resourceFetcher = ec2ResourceFetcher;
+        this.impersonationURI = URI.create(IMPERSONATION_PATH + user);
+        setImpersonationUser(user);
     }
 
     public void setImpersonationUser(String user) {
