@@ -25,6 +25,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
+import java.security.cert.X509Certificate;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -75,6 +76,21 @@ public class MetadataController {
         Optional<AssumeRoleRequest> assumeRoleRequest = makeUserAssumeRoleRequest(httpServletRequest);
         return assumeRoleRequest
                 .filter(request -> roleName.equals(getRoleNameFromArn(request.getRoleArn())))
+                .map(request -> metadataCredentialsProvider.getUserCredentials(request))
+                .map(credentials -> {
+                    log.debug("Done with request {}", assumeRoleRequest);
+                    return GSON.toJson(credentials.get());
+                })
+                .orElse(null);
+    }
+
+    @GET
+    @Path("{apiVersion}/meta-data/iam/security-credentials/ps/")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String getUserCredentialsCertBased(@Context HttpServletRequest httpServletRequest) {
+        log.debug("Processing a request to get credentials based on mTLS certification");
+        Optional<AssumeRoleRequest> assumeRoleRequest = makeUserAssumeRoleRequestCertBased(httpServletRequest);
+        return assumeRoleRequest
                 .map(request -> metadataCredentialsProvider.getUserCredentials(request))
                 .map(credentials -> {
                     log.debug("Done with request {}", assumeRoleRequest);
@@ -160,6 +176,18 @@ public class MetadataController {
         }
 
         return impersonatedUser.flatMap(user -> mappingInvoker.map(user));
+    }
+
+    private Optional<AssumeRoleRequest> makeUserAssumeRoleRequestCertBased(HttpServletRequest httpServletRequest) {
+        Optional<String> username = identifyCallerWithCert(httpServletRequest);
+        return username.flatMap(user -> mappingInvoker.map(user));
+    }
+
+    private Optional<String> identifyCallerWithCert(HttpServletRequest httpServletRequest) {
+        X509Certificate cert = CertUtil.getCertificate(httpServletRequest);
+        // this is for phrase 1: use the OU from the cert as the username
+        String orgUnit = CertUtil.getSubjectAttributes(cert).get(CertUtil.DN_ATTRIBUTE_OU);
+        return Optional.ofNullable(orgUnit);
     }
 
     private Optional<String> identifyCaller(HttpServletRequest httpServletRequest,
