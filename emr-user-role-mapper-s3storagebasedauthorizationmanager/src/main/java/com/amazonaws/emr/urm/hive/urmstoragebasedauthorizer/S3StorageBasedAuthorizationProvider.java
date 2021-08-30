@@ -13,6 +13,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.metastore.HiveMetaStore;
 import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.ql.metadata.AuthorizationException;
@@ -149,8 +150,8 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
     }
 
     @Override
-    public void setMetaStoreHandler(IHMSHandler handler) {
-        hive_db.setHandler(handler);
+public void setMetaStoreHandler(HiveMetaStore.HMSHandler handler) {        
+	hive_db.setHandler(handler);
         this.wh = handler.getWh();
         this.isRunFromMetaStore = true;
     }
