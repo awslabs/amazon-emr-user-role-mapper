@@ -13,6 +13,9 @@ import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.hk2.api.Immediate;
 
+/**
+ * Creates a custom AWS STS client based on {@link ApplicationConfiguration}
+ */
 @Slf4j
 @Immediate
 public class STSClientImpl implements STSClient {

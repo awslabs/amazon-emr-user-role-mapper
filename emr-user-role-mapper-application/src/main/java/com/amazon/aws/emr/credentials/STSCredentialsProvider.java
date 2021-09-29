@@ -43,8 +43,6 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
     public static final Duration MIN_REMAINING_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(10);
     public static final Duration MAX_RANDOM_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(5);
     private static final int CREDENTIALS_MAP_MAX_SIZE = 20000;
-    // Initialized later for testing using mocks.
-    public static Region region = null;
 
     private final LoadingCache<AssumeRoleRequest, Optional<EC2MetadataUtils.IAMSecurityCredential>> credentialsCache = CacheBuilder
         .newBuilder().maximumSize(CREDENTIALS_MAP_MAX_SIZE)
