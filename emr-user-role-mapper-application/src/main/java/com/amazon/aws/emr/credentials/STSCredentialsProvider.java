@@ -5,6 +5,9 @@ package com.amazon.aws.emr.credentials;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
@@ -15,9 +18,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.inject.Singleton;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
@@ -25,6 +25,8 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.ThreadLocalRandom;
+import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Fetches credentials for {@code AssumeRoleRequest} from STS.
@@ -38,6 +40,7 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
     private static final int CREDENTIALS_MAP_MAX_SIZE = 20000;
     // Initialized later for testing using mocks.
     public static AWSSecurityTokenService stsClient = null;
+    public static Region region = null;
 
     private final LoadingCache<AssumeRoleRequest, Optional<EC2MetadataUtils.IAMSecurityCredential>> credentialsCache = CacheBuilder
         .newBuilder().maximumSize(CREDENTIALS_MAP_MAX_SIZE)
@@ -49,10 +52,27 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
         });
 
     synchronized static AWSSecurityTokenService getStsClient() {
+        try {
+            if (region == null) {
+                region = Regions.getCurrentRegion();
+            }
+        } catch (Exception e){
+            log.info("Could not determine the AWS region!");
+        }
         if (stsClient == null) {
-            stsClient = AWSSecurityTokenServiceClientBuilder
+            if (region != null) {
+                String endpoint = String.format("https://sts.%s.amazonaws.com", region.getName());
+                log.info("Running the application with regional STS endpoint " + endpoint);
+                stsClient = AWSSecurityTokenServiceClientBuilder
+                    .standard()
+                    .withEndpointConfiguration(new EndpointConfiguration(endpoint, region.getName()))
+                    .build();
+            } else {
+                log.info("Running the application with global STS endpoint.");
+                stsClient = AWSSecurityTokenServiceClientBuilder
                     .standard()
                     .build();
+            }
         }
         return stsClient;
     }
