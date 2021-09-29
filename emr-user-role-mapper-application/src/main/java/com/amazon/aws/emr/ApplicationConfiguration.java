@@ -101,6 +101,12 @@ public class ApplicationConfiguration {
         return this.IMPERSONATION_ALLOWED_USERS;
     }
 
+    public boolean isRegionalStsEnabled() {
+        return Boolean.parseBoolean(properties.getProperty(Constants.REGIONAL_STS_ENABLED,
+            String.valueOf("true")));
+    }
+
+
     public boolean isSetSourceIdentityEnabled() {
         return Boolean.parseBoolean(properties.getProperty(Constants.SET_SOURCE_IDENTITY_ENABLED,
             String.valueOf("false")));

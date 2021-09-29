@@ -10,7 +10,6 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.core.Is.is;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
 import com.amazonaws.services.securitytoken.model.Credentials;
@@ -20,6 +19,7 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
@@ -37,15 +37,16 @@ public class STSCredentialsProviderTest {
   private static final long TWO_MIN_MS = 2 * 60 * 1000;
 
   @Mock
-  AWSSecurityTokenService stsClient;
+  STSClient stsClient;
+
+  @InjectMocks
+  STSCredentialsProvider stsCredentialsProvider;
 
   AssumeRoleRequest assumeRoleRequest;
 
   @Before
   public void setup() {
     mockStatic(STSCredentialsProvider.class);
-    Mockito.when(STSCredentialsProvider.getStsClient())
-        .thenReturn(stsClient);
     Mockito.when(STSCredentialsProvider.createInterceptorDateTimeFormat()).thenCallRealMethod();
     assumeRoleRequest = createTestAssumeRoleRequest();
   }
@@ -56,7 +57,6 @@ public class STSCredentialsProviderTest {
     Mockito.when(stsClient.assumeRole(assumeRoleRequest)).thenReturn(
         new AssumeRoleResult()
             .withCredentials(longLivedCredentials));
-    STSCredentialsProvider stsCredentialsProvider = new STSCredentialsProvider();
     Optional<EC2MetadataUtils.IAMSecurityCredential> optionalIAMSecurityCredentials = stsCredentialsProvider
         .getUserCredentials(assumeRoleRequest);
     assertThat(optionalIAMSecurityCredentials.isPresent(), is(true));
@@ -78,17 +78,11 @@ public class STSCredentialsProviderTest {
         new AssumeRoleResult()
             .withCredentials(longLivedCredentials));
 
-    STSCredentialsProvider stsCredentialsProvider = new STSCredentialsProvider();
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
-
-    PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(1));
-    STSCredentialsProvider.getStsClient();
-
-    // Make the second call
+    Mockito.verify(stsClient, Mockito.times(1)).assumeRole(assumeRoleRequest);
+    // Make the second call and there should no additional Mock invocation
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
-    // The invocations with STS client don't go up
-    PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(1));
-    STSCredentialsProvider.getStsClient();
+    Mockito.verify(stsClient, Mockito.times(1)).assumeRole(assumeRoleRequest);
   }
 
   @Test
@@ -97,21 +91,21 @@ public class STSCredentialsProviderTest {
     Mockito.when(stsClient.assumeRole(assumeRoleRequest)).thenReturn(
         new AssumeRoleResult()
             .withCredentials(shortLivedTestCredentials));
-    STSCredentialsProvider stsCredentialsProvider = new STSCredentialsProvider();
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
-
     /*
      * Why 2?
      * First call gets the credentials using sts as the cache is empty.
      * Second call is made to STS as the retrieved credentials are expired.
      */
-    PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(2));
-    STSCredentialsProvider.getStsClient();
+    Mockito.verify(stsClient, Mockito.times(2)).assumeRole(assumeRoleRequest);
+
+    // Make the second call and there should no another Mock invocation
+    stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
+    Mockito.verify(stsClient, Mockito.times(3)).assumeRole(assumeRoleRequest);
 
     // Make second call, should invoke STS client again
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
     PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(3));
-    STSCredentialsProvider.getStsClient();
   }
 
   @Test
@@ -120,20 +114,20 @@ public class STSCredentialsProviderTest {
     Mockito.when(stsClient.assumeRole(assumeRoleRequest)).thenReturn(
         new AssumeRoleResult()
             .withCredentials(shortLivedTestCredentials));
-    STSCredentialsProvider stsCredentialsProvider = new STSCredentialsProvider();
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
-    PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(2));
-    STSCredentialsProvider.getStsClient();
+    Mockito.verify(stsClient, Mockito.times(2)).assumeRole(assumeRoleRequest);
+
+    // Make the second call and there should no another Mock invocation
+    stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
+    Mockito.verify(stsClient, Mockito.times(3)).assumeRole(assumeRoleRequest);
 
     // Make second call, should invoke STS client again
     stsCredentialsProvider.getUserCredentials(assumeRoleRequest);
     PowerMockito.verifyStatic(STSCredentialsProvider.class, Mockito.times(3));
-    STSCredentialsProvider.getStsClient();
   }
 
   @Test
   public void random_refresh_time() {
-    STSCredentialsProvider stsCredentialsProvider = new STSCredentialsProvider();
     assertThat(stsCredentialsProvider.getRandomTimeInRange(), allOf(
         greaterThan(STSCredentialsProvider.MIN_REMAINING_TIME_TO_REFRESH_CREDENTIALS.toMillis()),
         lessThan(STSCredentialsProvider.MIN_REMAINING_TIME_TO_REFRESH_CREDENTIALS.toMillis() +

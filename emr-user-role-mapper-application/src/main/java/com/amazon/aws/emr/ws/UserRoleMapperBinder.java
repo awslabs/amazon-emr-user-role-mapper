@@ -7,6 +7,8 @@ import com.amazon.aws.emr.ApplicationConfiguration;
 import com.amazon.aws.emr.common.system.PrincipalResolver;
 import com.amazon.aws.emr.common.system.factory.PrincipalResolverFactory;
 import com.amazon.aws.emr.credentials.MetadataCredentialsProvider;
+import com.amazon.aws.emr.credentials.STSClient;
+import com.amazon.aws.emr.credentials.STSClientImpl;
 import com.amazon.aws.emr.credentials.STSCredentialsProvider;
 import com.amazon.aws.emr.mapping.MappingInvoker;
 import com.amazon.aws.emr.common.system.user.LinuxUserIdService;
@@ -27,6 +29,7 @@ public class UserRoleMapperBinder extends AbstractBinder {
         bind(MappingInvoker.class).to(MappingInvoker.class).in(Immediate.class);
         bind(STSCredentialsProvider.class).to(MetadataCredentialsProvider.class).in(Singleton.class);
         bind(ApplicationConfiguration.class).to(ApplicationConfiguration.class).in(Immediate.class);
+        bind(STSClientImpl.class).to(STSClient.class).in(Immediate.class);
         bindFactory(PrincipalResolverFactory.class).to(PrincipalResolver.class).in(Singleton.class);
     }
 }

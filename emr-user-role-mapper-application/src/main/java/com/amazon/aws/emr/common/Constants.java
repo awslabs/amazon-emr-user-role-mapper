@@ -85,6 +85,8 @@ final public class Constants {
     // Set the source identity in the Assume Role calls
     public static final String SET_SOURCE_IDENTITY_ENABLED = "rolemapper.sourceidentity.enabled";
 
+    public static final String REGIONAL_STS_ENABLED = "rolemapper.regional.sts.enabled";
+
     private Constants() {
     }
 

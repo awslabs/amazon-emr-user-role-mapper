@@ -3,6 +3,7 @@
 
 package com.amazon.aws.emr.credentials;
 
+import com.amazon.aws.emr.ApplicationConfiguration;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
@@ -25,6 +26,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.ThreadLocalRandom;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,11 +37,13 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 public class STSCredentialsProvider implements MetadataCredentialsProvider {
 
+    @Inject
+    STSClient stsClient;
+
     public static final Duration MIN_REMAINING_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(10);
     public static final Duration MAX_RANDOM_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(5);
     private static final int CREDENTIALS_MAP_MAX_SIZE = 20000;
     // Initialized later for testing using mocks.
-    public static AWSSecurityTokenService stsClient = null;
     public static Region region = null;
 
     private final LoadingCache<AssumeRoleRequest, Optional<EC2MetadataUtils.IAMSecurityCredential>> credentialsCache = CacheBuilder
@@ -50,32 +54,6 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
                 return assumeRole(assumeRoleRequest);
             }
         });
-
-    synchronized static AWSSecurityTokenService getStsClient() {
-        try {
-            if (region == null) {
-                region = Regions.getCurrentRegion();
-            }
-        } catch (Exception e){
-            log.info("Could not determine the AWS region!");
-        }
-        if (stsClient == null) {
-            if (region != null) {
-                String endpoint = String.format("https://sts.%s.amazonaws.com", region.getName());
-                log.info("Running the application with regional STS endpoint " + endpoint);
-                stsClient = AWSSecurityTokenServiceClientBuilder
-                    .standard()
-                    .withEndpointConfiguration(new EndpointConfiguration(endpoint, region.getName()))
-                    .build();
-            } else {
-                log.info("Running the application with global STS endpoint.");
-                stsClient = AWSSecurityTokenServiceClientBuilder
-                    .standard()
-                    .build();
-            }
-        }
-        return stsClient;
-    }
 
     /**
      * Create an instance of SimpleDataFormat.
@@ -119,7 +97,7 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
     private Optional<EC2MetadataUtils.IAMSecurityCredential> assumeRole(AssumeRoleRequest assumeRoleRequest) {
         log.info("Need to assume role {} with STS", assumeRoleRequest);
         try {
-            AssumeRoleResult assumeRoleResult = getStsClient().assumeRole(assumeRoleRequest);
+            AssumeRoleResult assumeRoleResult = stsClient.assumeRole(assumeRoleRequest);
             EC2MetadataUtils.IAMSecurityCredential credentials = createIAMSecurityCredential(assumeRoleResult.getCredentials());
             log.debug("Procured credentials from STS for assume role {}", assumeRoleRequest);
             return Optional.of(credentials);
