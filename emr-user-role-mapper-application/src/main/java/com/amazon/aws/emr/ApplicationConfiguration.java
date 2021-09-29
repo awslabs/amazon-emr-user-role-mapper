@@ -102,7 +102,7 @@ public class ApplicationConfiguration {
     }
 
     public boolean isRegionalStsEnabled() {
-        return Boolean.parseBoolean(properties.getProperty(Constants.REGIONAL_STS_ENABLED,
+        return Boolean.parseBoolean(properties.getProperty(Constants.REGIONAL_STS_ENDPOINT_ENABLED,
             String.valueOf("true")));
     }
 
