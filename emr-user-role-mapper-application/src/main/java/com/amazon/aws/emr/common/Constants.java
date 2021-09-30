@@ -85,6 +85,10 @@ final public class Constants {
     // Set the source identity in the Assume Role calls
     public static final String SET_SOURCE_IDENTITY_ENABLED = "rolemapper.sourceidentity.enabled";
 
+    // Determines if regional STS endpoint is used. Setting to "false" uses global endpoint.
+    // Default value is true.
+    public static final String REGIONAL_STS_ENDPOINT_ENABLED = "rolemapper.regional.sts.endpoint.enabled";
+
     private Constants() {
     }
 

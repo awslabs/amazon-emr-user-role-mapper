@@ -3,8 +3,12 @@
 
 package com.amazon.aws.emr.credentials;
 
+import com.amazon.aws.emr.ApplicationConfiguration;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
@@ -15,9 +19,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.inject.Singleton;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
@@ -25,6 +26,9 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.ThreadLocalRandom;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Fetches credentials for {@code AssumeRoleRequest} from STS.
@@ -33,11 +37,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @Singleton
 public class STSCredentialsProvider implements MetadataCredentialsProvider {
 
+    @Inject
+    STSClient stsClient;
+
     public static final Duration MIN_REMAINING_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(10);
     public static final Duration MAX_RANDOM_TIME_TO_REFRESH_CREDENTIALS = Duration.ofMinutes(5);
     private static final int CREDENTIALS_MAP_MAX_SIZE = 20000;
-    // Initialized later for testing using mocks.
-    public static AWSSecurityTokenService stsClient = null;
 
     private final LoadingCache<AssumeRoleRequest, Optional<EC2MetadataUtils.IAMSecurityCredential>> credentialsCache = CacheBuilder
         .newBuilder().maximumSize(CREDENTIALS_MAP_MAX_SIZE)
@@ -47,15 +52,6 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
                 return assumeRole(assumeRoleRequest);
             }
         });
-
-    synchronized static AWSSecurityTokenService getStsClient() {
-        if (stsClient == null) {
-            stsClient = AWSSecurityTokenServiceClientBuilder
-                    .standard()
-                    .build();
-        }
-        return stsClient;
-    }
 
     /**
      * Create an instance of SimpleDataFormat.
@@ -99,7 +95,7 @@ public class STSCredentialsProvider implements MetadataCredentialsProvider {
     private Optional<EC2MetadataUtils.IAMSecurityCredential> assumeRole(AssumeRoleRequest assumeRoleRequest) {
         log.info("Need to assume role {} with STS", assumeRoleRequest);
         try {
-            AssumeRoleResult assumeRoleResult = getStsClient().assumeRole(assumeRoleRequest);
+            AssumeRoleResult assumeRoleResult = stsClient.assumeRole(assumeRoleRequest);
             EC2MetadataUtils.IAMSecurityCredential credentials = createIAMSecurityCredential(assumeRoleResult.getCredentials());
             log.debug("Procured credentials from STS for assume role {}", assumeRoleRequest);
             return Optional.of(credentials);

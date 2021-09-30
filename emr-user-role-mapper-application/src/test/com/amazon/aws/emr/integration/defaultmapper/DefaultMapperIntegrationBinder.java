@@ -8,6 +8,8 @@ import com.amazon.aws.emr.common.system.PrincipalResolver;
 import com.amazon.aws.emr.common.system.impl.CommandBasedPrincipalResolver;
 import com.amazon.aws.emr.common.system.user.UserIdService;
 import com.amazon.aws.emr.credentials.MetadataCredentialsProvider;
+import com.amazon.aws.emr.credentials.STSClient;
+import com.amazon.aws.emr.credentials.STSClientImpl;
 import com.amazon.aws.emr.credentials.STSCredentialsProvider;
 import com.amazon.aws.emr.integration.IntegrationTestsUserService;
 import com.amazon.aws.emr.mapping.MappingInvoker;
@@ -24,6 +26,7 @@ public class DefaultMapperIntegrationBinder extends AbstractBinder {
   protected void configure() {
     bind(IntegrationTestsUserService.class).to(UserIdService.class);
     bind(MappingInvoker.class).to(MappingInvoker.class).in(Immediate.class);
+    bind(STSClientImpl.class).to(STSClient.class).in(Immediate.class);
     bind(STSCredentialsProvider.class).to(MetadataCredentialsProvider.class).in(Singleton.class);
     bind(DefaultMapperImplApplicationConfig.class).to(ApplicationConfiguration.class)
         .in(Immediate.class);
