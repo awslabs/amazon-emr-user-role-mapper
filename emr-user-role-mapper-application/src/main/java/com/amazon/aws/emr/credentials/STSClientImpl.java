@@ -35,21 +35,26 @@ public class STSClientImpl implements STSClient {
       try {
         region = Regions.getCurrentRegion();
         regionString = region.getName();
+        String endpoint = String.format("https://sts.%s.amazonaws.com", regionString);
+        log.info("Running the application with regional STS endpoint " + endpoint);
+        stsClient = AWSSecurityTokenServiceClientBuilder
+            .standard()
+            .withEndpointConfiguration(new EndpointConfiguration(endpoint, regionString))
+            .build();
       } catch (Exception e) {
-        log.error("Cannot determine the AWS region. Defaulting to {}", regionString);
+        log.error("Cannot determine the AWS region. Defaulting to global endpoint.");
+        createGlobalEndpointClient();
       }
-      String endpoint = String.format("https://sts.%s.amazonaws.com", regionString);
-      log.info("Running the application with regional STS endpoint " + endpoint);
-      stsClient = AWSSecurityTokenServiceClientBuilder
-          .standard()
-          .withEndpointConfiguration(new EndpointConfiguration(endpoint, regionString))
-          .build();
     } else {
-      log.info("Running the application with global STS endpoint.");
-      stsClient = AWSSecurityTokenServiceClientBuilder
-          .standard()
-          .build();
+      createGlobalEndpointClient();
     }
+  }
+
+  private void createGlobalEndpointClient() {
+    log.info("Running the application with global STS endpoint.");
+    stsClient = AWSSecurityTokenServiceClientBuilder
+        .standard()
+        .build();
   }
 
   @Override
