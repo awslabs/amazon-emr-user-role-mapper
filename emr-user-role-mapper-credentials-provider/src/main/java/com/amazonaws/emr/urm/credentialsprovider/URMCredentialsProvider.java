@@ -29,6 +29,7 @@ public class URMCredentialsProvider
     private final Set<String> usersAllowedToImpersonate;
 
     private final String createdBy;
+    private final String createdFor;
 
     final private URMCredentialsFetcher urmCredentialsFetcher;
 
@@ -40,6 +41,7 @@ public class URMCredentialsProvider
     {
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 DEFAULT_ALLOWED_USERS,
+                getUgi().getShortUserName(),
                 getRealUser()
                 );
     }
@@ -53,6 +55,7 @@ public class URMCredentialsProvider
     {
         this(new URMCredentialsFetcher(getUgi().getShortUserName()),
                 getUsersAllowedToImpersonate(configuration),
+                getUgi().getShortUserName(),
                 getRealUser());
     }
 
@@ -64,7 +67,7 @@ public class URMCredentialsProvider
      */
     @VisibleForTesting
     URMCredentialsProvider(URMCredentialsFetcher urmCredentialsFetcher, Set<String> usersAllowedToImpersonate,
-            String realUser)
+            String currentUser, String realUser)
     {
         Preconditions.checkNotNull(urmCredentialsFetcher);
         Preconditions.checkNotNull(usersAllowedToImpersonate);
@@ -72,6 +75,7 @@ public class URMCredentialsProvider
         LOG.debug("Building URMCredentials Provider.");
         this.urmCredentialsFetcher = urmCredentialsFetcher;
         this.usersAllowedToImpersonate = usersAllowedToImpersonate;
+        this.createdFor = currentUser;
         this.createdBy = realUser;
     }
 
@@ -93,7 +97,7 @@ public class URMCredentialsProvider
             return null;
         }
 
-        String callingUser = getUgi().getShortUserName();
+        String callingUser = this.createdFor;
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("I am impersonating user: " + callingUser);
