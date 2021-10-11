@@ -37,7 +37,7 @@ public class URMCredentialsProviderTest
     {
         URMCredentialsFetcher mockURMCredentialsFetcher = mock(URMCredentialsFetcher.class);
         URMCredentialsProvider urmCredentialsProvider = new URMCredentialsProvider(mockURMCredentialsFetcher,
-                new HashSet<>(Arrays.asList("user1", "user2")), REALUSER);
+                new HashSet<>(Arrays.asList("user1", "user2")), USER, REALUSER);
         assertNull(urmCredentialsProvider.getCredentials());
     }
 
@@ -64,7 +64,7 @@ public class URMCredentialsProviderTest
 
         Set<String> allowedList = new HashSet<>(Collections.singletonList(REALUSER));
         URMCredentialsProvider urmCredentialsProvider = new URMCredentialsProvider(mockURMCredentialsFetcher,
-                allowedList, REALUSER);
+                allowedList, USER, REALUSER);
 
         AWSCredentials returnedCreds = urmCredentialsProvider.getCredentials();
 
