@@ -186,8 +186,8 @@ sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/user-role-mapper.properties /emr/user-r
 echo "Getting and setting mappings.json"
 sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/mappings.json /emr/user-role-mapper/conf/
 sudo sed -i "s#\$AWS_ROLE#${ROLE_ARN}#g" /emr/user-role-mapper/conf/mappings.json
-echo "Getting emr-user-role-mapper-application-1.1.0-jar-with-dependencies-and-exclude-classes.jar from S3"
-sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper-application-1.1.0-jar-with-dependencies-and-exclude-classes.jar /usr/share/aws/emr/user-role-mapper/lib/
+echo "Getting emr-user-role-mapper-application-1.2.0-SNAPSHOT-jar-with-dependencies-and-exclude-classes.jar from S3"
+sudo aws s3 cp s3://${BUCKET}/${S3_PATH}/emr-user-role-mapper-application-1.2.0-SNAPSHOT-jar-with-dependencies-and-exclude-classes.jar /usr/share/aws/emr/user-role-mapper/lib/
 
 echo "Setting permissions"
 sudo chown -R userrolemapper:$sudo_user /emr/user-role-mapper
