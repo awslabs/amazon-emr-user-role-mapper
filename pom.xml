@@ -12,10 +12,22 @@
     <modules>
         <module>emr-user-role-mapper-interface</module>
         <module>emr-user-role-mapper-application</module>
-        <module>emr-user-role-mapper-credentials-provider</module>
-        <module>emr-user-role-mapper-s3storagebasedauthorizationmanager</module>
     </modules>
-
+    
+   <profiles>
+   	<profile>
+      		<id>impersonation-credentials-provider</id>
+      		<modules>
+        		<module>emr-user-role-mapper-credentials-provider</module>
+      		</modules>
+    	</profile>
+   	<profile>
+      		<id>hive-metastore-connector</id>
+      		<modules>
+        		<module>emr-user-role-mapper-s3storagebasedauthorizationmanager</module>
+      		</modules>
+    	</profile>
+   </profiles>
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
