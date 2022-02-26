@@ -10,11 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -55,24 +55,21 @@ public class CommandBasedPrincipalResolver extends AbstractPrincipalResolver {
      * returns an empty list.
      */
     public List<String> runCommand(List<String> command) {
-        List<String> commandOutput = new ArrayList<>();
-
         try {
             Process process = new ProcessBuilder(command).start();
-
-            if (!process.waitFor(3, TimeUnit.SECONDS)) {
+            String commandTimeoutSeconds = System.getProperties().getProperty("COMMAND_TIMEOUT_SECONDS", "3");
+            if (!process.waitFor(Integer.valueOf(commandTimeoutSeconds), TimeUnit.SECONDS)) {
                 log.error("Command didn't finish: {}", command);
                 process.destroyForcibly();
-                return commandOutput;
+                throw new TimeoutException(Arrays.toString(command.toArray()) +  " timed out after " + commandTimeoutSeconds + " seconds");
             }
 
             try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 return br.lines().flatMap(Pattern.compile("\\s+")::splitAsStream).collect(Collectors.toList());
             }
-        } catch (IOException | InterruptedException ie) {
+        } catch (IOException | InterruptedException | TimeoutException ie) {
             log.error("Couldn't run command to retrieve user/ groups: {}", command, ie);
+            throw new RuntimeException(ie);
         }
-
-        return commandOutput;
     }
 }
