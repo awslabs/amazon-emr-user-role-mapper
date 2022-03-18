@@ -5,6 +5,7 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.amazon.aws.emr.ApplicationConfiguration;
 import com.amazon.aws.emr.common.system.impl.CommandBasedPrincipalResolver;
 import com.amazon.aws.emr.integration.IntegrationTestBase;
 import com.amazon.aws.emr.integration.utils.IAMUtils;
@@ -63,7 +64,7 @@ public class PoliciesUnionMappingProviderImplIntegrationTest extends Integration
   private static List<String> groups;
 
   static private void createAwsResources() {
-    groups = new CommandBasedPrincipalResolver().runCommand(Arrays.asList("id", "-Gn"));
+    groups = new CommandBasedPrincipalResolver(new ApplicationConfiguration()).runCommand(Arrays.asList("id", "-Gn"));
     if (groups.isEmpty()) {
       log.warn("No groups found - skipping the tests");
       return;

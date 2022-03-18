@@ -89,6 +89,9 @@ final public class Constants {
     // Default value is true.
     public static final String REGIONAL_STS_ENDPOINT_ENABLED = "rolemapper.regional.sts.endpoint.enabled";
 
+    // How long to wait for the system commands to return a response before throwing a timeout exception
+    public static final String COMMAND_TIMEOUT_SECONDS = "command.timeout.seconds";
+    public static final String DEFAULT_COMMAND_TIMEOUT_SECONDS = "3";
     private Constants() {
     }
 

@@ -30,7 +30,7 @@ public class PrincipalResolverFactory implements Factory<PrincipalResolver> {
 
         log.info("Using principal resolver strategy: {}", principalResolverStrategy);
         if (Constants.DEFAULT_PRINCIPAL_RESOLVER_STRATEGY.equalsIgnoreCase(principalResolverStrategy))
-            return new CommandBasedPrincipalResolver();
+            return new CommandBasedPrincipalResolver(appConfig);
 
         return new JniBasedPrincipalResolver();
     }

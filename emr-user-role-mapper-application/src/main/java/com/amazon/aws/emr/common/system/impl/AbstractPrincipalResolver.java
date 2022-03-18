@@ -9,13 +9,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.PostConstruct;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -91,7 +94,12 @@ public abstract class AbstractPrincipalResolver implements PrincipalResolver {
      */
     @Override
     public Optional<String> getUsername(int uid) {
-        return userMap.getUnchecked(uid);
+        try {
+            return userMap.getUnchecked(uid);
+        } catch (UncheckedExecutionException e) {
+            // ignore and return empty username, the underlying method should have logged exception details
+        }
+        return Optional.empty();
     }
 
     /**
@@ -100,8 +108,16 @@ public abstract class AbstractPrincipalResolver implements PrincipalResolver {
      * Uses linux command: id -Gn {username} to get groups
      */
     @Override
-    public Optional<List<String>> getGroups(String username) {
-        return Optional.ofNullable(groupMap.getUnchecked(username));
+    public Optional<List<String>> getGroups(String username)
+    {
+        try {
+            return Optional.ofNullable(groupMap.getUnchecked(username));
+        }
+        catch (UncheckedExecutionException e) {
+            // ignore and return empty groups, the underlying method should have logged exception details
+            // not returning empty to preserve the existing behavior.
+            return Optional.of(Collections.emptyList());
+        }
     }
 
     /**

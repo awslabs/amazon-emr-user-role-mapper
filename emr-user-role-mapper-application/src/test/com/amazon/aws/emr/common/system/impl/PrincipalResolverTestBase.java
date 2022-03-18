@@ -15,7 +15,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class PrincipalResolverTestBase {
+public abstract class PrincipalResolverTestBase {
     protected static final Integer TTL_SECS = 3;
 
     protected static final int VALID_UID = 123;

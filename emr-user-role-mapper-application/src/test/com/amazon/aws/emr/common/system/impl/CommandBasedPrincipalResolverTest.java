@@ -3,6 +3,7 @@
 
 package com.amazon.aws.emr.common.system.impl;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,14 +16,17 @@ import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
@@ -50,10 +54,23 @@ public class CommandBasedPrincipalResolverTest extends PrincipalResolverTestBase
 
         Process mockProcess = mock(Process.class);
         when(mockProcessBuilder.start()).thenReturn(mockProcess);
-
         when(mockProcess.waitFor(anyLong(), any(TimeUnit.class))).thenReturn(false);
-        assertThat(principalResolver.getLinuxGroups(USER_MULTI_GRPS).isEmpty(), is(true));
-        verify(mockProcess).waitFor(anyLong(), any());
+
+        // verify that getGroups will just return empty list and not an exception
+        assertThat(principalResolver.getGroups(USER_MULTI_GRPS).get().isEmpty(), is(true));
+
+        // verify that getLinuxGroups throws an exception so the cache does not get populated
+        try {
+            principalResolver.getLinuxGroups(USER_MULTI_GRPS);
+            Assert.fail("should have thrown timeout exception");
+        } catch (RuntimeException e) {
+            assertTrue(e.getCause().getClass().equals(TimeoutException.class));
+        }
+
+        // call getGroups again and verify that we still call underlying getLinuxGroups as cache is not populated
+        assertThat(principalResolver.getGroups(USER_MULTI_GRPS).get().isEmpty(), is(true));
+        verify(principalResolver, times(3)).getLinuxGroups(USER_MULTI_GRPS);
+        verify(mockProcess, times(3)).waitFor(anyLong(), any());
     }
 
     private void setupGetGrpsMocks() throws Exception {
