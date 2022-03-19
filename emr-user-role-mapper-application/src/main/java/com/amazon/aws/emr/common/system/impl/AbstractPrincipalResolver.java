@@ -33,7 +33,7 @@ public abstract class AbstractPrincipalResolver implements PrincipalResolver {
     private static final String LINUX_USERS_FILE = "/etc/passwd";
 
     private static final int GROUP_MAP_MAX_SIZE = 10000;
-    private static final int DEFAULT_GROUP_MAP_EXPIRATION_MINS = 15;
+    private static final int DEFAULT_GROUP_MAP_EXPIRATION_MINS = 60 * 4;
 
     private final LoadingCache<Integer, Optional<String>> userMap;
     private final LoadingCache<String, List<String>> groupMap;
