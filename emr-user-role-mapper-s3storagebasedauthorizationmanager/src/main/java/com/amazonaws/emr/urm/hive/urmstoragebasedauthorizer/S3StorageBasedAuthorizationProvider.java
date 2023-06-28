@@ -113,7 +113,28 @@ public class S3StorageBasedAuthorizationProvider extends HiveAuthorizationProvid
         if(table.isView() || table.isMaterializedView()){
             return;
         }
-        authorize(table.getDataLocation().toString(), readRequiredPriv, writeRequiredPriv);
+
+        org.apache.hadoop.fs.Path tableLocation = table.getDataLocation();
+        String tableLocationStr = null;
+
+        if (tableLocation == null){
+            LOG.info("Table Location not specified. Building it.");
+            String databaseName = table.getDbName();
+            LOG.info("Database: " + databaseName);
+            String catalogName = table.getCatName();
+            LOG.info("Catalog: " + catalogName);
+            Database db = hive_db.getDatabase(catalogName,databaseName);
+            String dbLocation = db.getLocationUri();
+            LOG.info("DB Location: " + dbLocation);
+            tableLocationStr = dbLocation + "/" + table.getTableName();
+        }
+        else{
+            tableLocationStr = tableLocation.toString();
+        }
+
+        LOG.info("Table Location:" + tableLocationStr);
+
+        authorize(tableLocationStr, readRequiredPriv, writeRequiredPriv);
     }
 
     @Override
