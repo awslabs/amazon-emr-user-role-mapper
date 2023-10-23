@@ -186,6 +186,10 @@ To get more information, including installation instructions, see URM Credential
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
+## Limitations
+
+URM does not work with tcp6 and IMDSv6 currently. Please do not use URM on installations that use tcp6 traffic along with IMDSv6.
+
 ## License
 
 This project is licensed under the Apache-2.0 License.
