@@ -3,6 +3,7 @@
 
 package com.amazon.aws.emr.api;
 
+import java.io.UnsupportedEncodingException;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.ws.rs.container.ContainerRequestContext;
@@ -37,6 +38,7 @@ public class RequestFilter implements ContainerRequestFilter {
     public void filter(ContainerRequestContext ctx) {
         UriInfo uriInfo = ctx.getUriInfo();
         URI sanitizedUri = sanitizeRequestUri(uriInfo);
+        log.debug("Sanitized URI {}", sanitizedUri);
         if (isAuthorizedUri(sanitizedUri)) {
             ctx.setRequestUri(sanitizedUri);
         } else {
@@ -49,8 +51,9 @@ public class RequestFilter implements ContainerRequestFilter {
 
     private URI sanitizeRequestUri(UriInfo uriInfo) {
         String sanitizedUri = uriInfo.getPath().replaceAll("\\/+", "/");
+        String decodedUri = decodeURL(sanitizedUri);
         UriBuilder uriBuilder = uriInfo.getBaseUriBuilder();
-        URI newUri = uriBuilder.path(sanitizedUri).build();
+        URI newUri = uriBuilder.path(decodedUri).build();
         return newUri.normalize();
     }
 
@@ -63,6 +66,29 @@ public class RequestFilter implements ContainerRequestFilter {
             }
         }
         return true;
+    }
+
+    /**
+     * Recursively decodes a URL.
+     *
+     * This is important as a malicious caller could try to access protected URIs
+     * by recursively encoding the URL. To find the true intent of the request we
+     * need to recursively decode it.
+     *
+     * @param url the URL to decode
+     * @return the decoded URL
+     */
+    public String decodeURL(String url) {
+        try {
+            String decoded = java.net.URLDecoder.decode(url, "UTF-8");
+            if (!decoded.equals(url)) {
+                return decodeURL(decoded);
+            } else {
+                return decoded;
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Could not decode URL", e);
+        }
     }
 }
 
